@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" 
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------
+// "CETAK BIRU" UNTUK TABEL-TABEL KITA
+// ----------------------------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?  
+  phone     String?  
+  passwordHash String
+  role      UserRole @default(Sales) 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt 
+}
+
+// Enum untuk role user
+enum UserRole {
+  Sales
+  Admin
+}
