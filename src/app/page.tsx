@@ -1,5 +1,5 @@
-export default function Home() {
-  return (
-    <h1>Halo Dek</h1>
-  );
+import { redirect } from "next/navigation";
+
+export default function RootPage() {
+  redirect('/login');
 }
