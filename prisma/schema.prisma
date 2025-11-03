@@ -1,29 +1,207 @@
+// File: prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ----------------------------------------------
-// "CETAK BIRU" UNTUK TABEL-TABEL KITA
-// ----------------------------------------------
+// ===============================================
+// 1. MODEL UNTUK AUTENTIKASI APLIKASI
+// (Sales / Admin yang menggunakan portal)
+// ===============================================
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?  
-  phone     String?  
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  phone        String?
   passwordHash String
-  role      UserRole @default(Sales) 
+  role         UserRole @default(Sales)
+
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
+  updatedAt DateTime @updatedAt
+
+  // Relasi
+  passwordResetTokens PasswordResetToken[]
 }
 
-// Enum untuk role user
 enum UserRole {
   Sales
   Admin
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ===============================================
+// 2. MODEL UNTUK DATA LEAD SCORING (DARI README)
+// (Data nasabah/customer yang akan di-skor)
+// ===============================================
+
+// --- 2.1. Tabel Utama: Customer ---
+model Customer {
+  id        String   @id @default(cuid())
+  
+  // Kolom PII (Personally Identifiable Information)
+  name      String
+  email     String   @unique
+  phone     String?
+  
+  // --- ALAMAT SIMPEL (1 BARIS) ---
+  address   String? // Alamat lengkap
+  // --- AKHIR ALAMAT ---
+
+  // Kolom Data (dari README)
+  age       Int
+  job       Job
+  marital   MaritalStatus
+  education Education
+  default   YesNoUnknown // Memiliki kredit macet?
+  balance   Float
+  housing   YesNoUnknown // Memiliki kredit rumah?
+  loan      YesNoUnknown // Memiliki pinjaman pribadi?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi: 1 Customer punya banyak riwayat Kampanye & banyak Skor
+  campaigns  Campaign[]
+  leadScores LeadScore[]
+  
+  // Indeks untuk percepat pencarian
+  @@index([name])
+  @@index([email])
+}
+
+// --- 2.2. Riwayat Kampanye ---
+model Campaign {
+  id          String   @id @default(cuid())
+  contact     ContactType
+  day_of_week String
+  month       String
+  campaign    Int // Jumlah kontak di kampanye ini
+  previous    Int // Jumlah kontak di kampanye sebelumnya
+  pdays       Int
+  poutcome    POutcome
+
+  createdAt DateTime @default(now())
+
+  // Relasi: 1 Kampanye milik 1 Customer
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Relasi: 1 Kampanye bisa menghasilkan banyak skor
+  leadScores LeadScore[]
+
+  // Indeks untuk percepat filter
+  @@index([customerId])
+  @@index([month])
+}
+
+// --- 2.3. Data Makroekonomi ---
+model MacroData {
+  id             String   @id @default(cuid())
+  month          String   @unique // Diasumsikan unik per bulan
+  emp_var_rate   Float
+  cons_price_idx Float
+  cons_conf_idx  Float
+  euribor3m      Float
+  nr_employed    Float
+
+  createdAt DateTime @default(now())
+}
+
+// --- 2.4. Hasil Prediksi Model ---
+model LeadScore {
+  id          String     @id @default(cuid())
+  predicted_y Prediction // Prediksi (yes/no)
+  score       Float      // Probabilitas (skor)
+
+  createdAt DateTime @default(now())
+
+  // Relasi: 1 Skor milik 1 Customer
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Relasi: 1 Skor hasil dari 1 Kampanye
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  // Indeks untuk percepat filter & sorting
+  @@index([customerId])
+  @@index([campaignId])
+  @@index([score]) // INDEKS PALING PENTING untuk dashboard
+}
+
+
+// ===============================================
+// 3. ENUMS / KATEGORI TETAP (DARI README)
+// ===============================================
+
+enum Job {
+  admin
+  technician
+  services
+  management
+  retired
+  blue_collar
+  unemployed
+  entrepreneur
+  housemaid
+  self_employed
+  student
+  unknown
+}
+
+enum MaritalStatus {
+  married
+  single
+  divorced
+}
+
+// Catatan: Tanda '.' diganti '_' agar valid di Prisma
+enum Education {
+  basic_4y
+  basic_6y
+  basic_9y
+  high_school
+  university_degree
+  professional_course
+  unknown
+}
+
+enum YesNoUnknown {
+  yes
+  no
+  unknown
+}
+
+enum ContactType {
+  cellular
+  telephone
+}
+
+enum POutcome {
+  nonexistent
+  failure
+  success
+}
+
+enum Prediction {
+  yes
+  no
 }
