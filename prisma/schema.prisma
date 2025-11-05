@@ -1,12 +1,15 @@
 // File: prisma/schema.prisma
 
+// Langkah 1: Memberitahu Prisma cara membuat Client-nya
 generator client {
   provider = "prisma-client-js"
 }
 
+// Langkah 2: Memberitahu Prisma cara konek ke database
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ===============================================
@@ -27,6 +30,8 @@ model User {
 
   // Relasi
   passwordResetTokens PasswordResetToken[]
+  // Relasi ke 'Campaign' (Sales siapa yang mencatat panggilan)
+  createdCampaigns    Campaign[]
 }
 
 enum UserRole {
@@ -47,25 +52,23 @@ model PasswordResetToken {
   @@index([userId])
 }
 
+
 // ===============================================
-// 2. MODEL UNTUK DATA LEAD SCORING (DARI README)
+// 2. MODEL UNTUK DATA LEAD SCORING 
 // (Data nasabah/customer yang akan di-skor)
 // ===============================================
 
 // --- 2.1. Tabel Utama: Customer ---
 model Customer {
-  id        String   @id @default(cuid())
+  id      String @id @default(cuid())
   
-  // Kolom PII (Personally Identifiable Information)
-  name      String
-  email     String   @unique
-  phone     String?
-  
-  // --- ALAMAT SIMPEL (1 BARIS) ---
-  address   String? // Alamat lengkap
-  // --- AKHIR ALAMAT ---
+  // Data Personal (PII)
+  name    String
+  email   String @unique
+  phone   String?
+  address String? // Alamat versi 1 baris
 
-  // Kolom Data (dari README)
+  // Data Demografis (untuk Model ML)
   age       Int
   job       Job
   marital   MaritalStatus
@@ -81,9 +84,9 @@ model Customer {
   // Relasi: 1 Customer punya banyak riwayat Kampanye & banyak Skor
   campaigns  Campaign[]
   leadScores LeadScore[]
-  
-  // Indeks untuk percepat pencarian
-  @@index([name])
+
+  // Indeks Performa
+  @@index([name]) // Percepat pencarian berdasarkan nama
   @@index([email])
 }
 
@@ -93,8 +96,8 @@ model Campaign {
   contact     ContactType
   day_of_week String
   month       String
-  campaign    Int // Jumlah kontak di kampanye ini
-  previous    Int // Jumlah kontak di kampanye sebelumnya
+  campaign    Int      // Jumlah kontak di kampanye ini
+  previous    Int      // Jumlah kontak di kampanye sebelumnya
   pdays       Int
   poutcome    POutcome
 
@@ -103,13 +106,18 @@ model Campaign {
   // Relasi: 1 Kampanye milik 1 Customer
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
+
+  // Relasi: 1 Kampanye (log) dibuat oleh 1 User (Sales)
+  userId String?
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull) // Jika user dihapus, log tetap ada
+
   // Relasi: 1 Kampanye bisa menghasilkan banyak skor
   leadScores LeadScore[]
 
-  // Indeks untuk percepat filter
+  // Indeks Performa
   @@index([customerId])
-  @@index([month])
+  @@index([userId])
+  @@index([month]) // Percepat filter berdasarkan bulan
 }
 
 // --- 2.3. Data Makroekonomi ---
@@ -136,20 +144,20 @@ model LeadScore {
   // Relasi: 1 Skor milik 1 Customer
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
+
   // Relasi: 1 Skor hasil dari 1 Kampanye
   campaignId String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  // Indeks untuk percepat filter & sorting
+  // Indeks Performa
   @@index([customerId])
   @@index([campaignId])
-  @@index([score]) // INDEKS PALING PENTING untuk dashboard
+  @@index([score]) // Percepat sorting & filter berdasarkan skor
 }
 
 
 // ===============================================
-// 3. ENUMS / KATEGORI TETAP (DARI README)
+// 3. ENUMS / KATEGORI TETAP
 // ===============================================
 
 enum Job {
