@@ -1,15 +1,11 @@
 // File: prisma/schema.prisma
-
-// Langkah 1: Memberitahu Prisma cara membuat Client-nya
 generator client {
   provider = "prisma-client-js"
 }
 
-// Langkah 2: Memberitahu Prisma cara konek ke database
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ===============================================
