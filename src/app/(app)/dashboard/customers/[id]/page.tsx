@@ -143,7 +143,7 @@ export default function CustomerDetailPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-b from-[#9EECCF] via-[#BFF5E2] to-[#F9FFFC] font-sans">
+    <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4] font-sans">
       <Sidebar />
 
       <main className="flex-1 p-8 space-y-10 relative">
