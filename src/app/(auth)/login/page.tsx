@@ -1,135 +1,194 @@
-// File: src/app/(auth)/login/page.tsx
+"use client";
 
-"use client"; // Wajib untuk halaman interaktif
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
+import { IoMailOutline } from "react-icons/io5";
+import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { MdOutlineEmail } from "react-icons/md";
-import { LuLockKeyhole } from "react-icons/lu";
-
-
-
+// VALIDATION SCHEMA
 const loginSchema = z.object({
-    email: z.string().email("Invalid email format"),
-    password: z.string().min(1, "Password is required"),
+  email: z.string().email("Format email tidak valid"),
+  password: z.string().min(1, "Password wajib diisi"),
 });
-
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-
 export default function LoginPage() {
-    const router = useRouter();
-    const [serverError, setServerError] = useState<string | null>(null);
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors, isSubmitting },
-    } = useForm<LoginFormValues>({
-        resolver: zodResolver(loginSchema),
-    });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    // 5. Buat fungsi onSubmit
-    const onSubmit = async (data: LoginFormValues) => {
-        setServerError(null);
+  // HANDLE LOGIN SUBMIT
+  const onSubmit = async (data: LoginFormValues) => {
+    setServerError(null);
 
-        try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                setServerError(errorData.error || 'Login failed. Please try again.');
-                return;
-            }
+      if (!res.ok) {
+        const errorData = await res.json();
+        setServerError(errorData.error || "Login gagal. Coba lagi.");
+        return;
+      }
 
-            // Login Berhasil
-            router.push('/dashboard');
-            router.refresh();
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setServerError("Terjadi kesalahan. Coba lagi.");
+    }
+  };
 
-        } catch (err) {
-            console.error(err);
-            setServerError('An unexpected error occurred. Please try again.');
-        }
-    };
+  return (
+    <div className="flex min-h-screen w-full bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4]">
 
-    return (
-        <main className='flex flex-col items-center justify-center min-h-[100vh]'>
-            {/* 6. Gunakan handleSubmit dari react-hook-form */}
-            <form className='bg-white p-[2rem] rounded-lg shadow-sm w-full max-w-[500px]' onSubmit={handleSubmit(onSubmit)}>
-                <div className='flex flex-col gap-5 text-center justify-center items-center mb-6'>
-                    <h1 className='font-bold text-[#5B4AD3] text-4xl'>Scorify</h1>
-                    <div>
-                        <h3 className='font-bold text-2xl'>Selamat Datang Kembali</h3>
-                        <p className='text-[#999999] text-sm'>Masuk untuk melanjutkan ke Dashboard anda</p>
-                    </div>
-                </div>
+      {/* LEFT SECTION */}
+      <div className="hidden lg:flex w-1/2 h-screen px-20 items-center justify-center">
+        <div className="flex flex-col space-y-6 max-w-lg -mt-10">
+          <Image
+            src="/logo-scorify.png"
+            alt="Scorify Logo"
+            width={170}
+            height={50}
+            className="mb-2"
+          />
 
-                <div className='mb-[1rem]'>
-                    <label htmlFor="email" className='block mb-[0.5rem]'>Email</label>
-                    <div className='relative'>
-                        <input
-                            id="email"
-                            type="email"
-                            className={`w-full p-[0.75rem] border-2 border-solid border-[#DFE1E6] rounded-md ${(errors.email ? 'border-red-500' : {})}`}
-                            {...register("email")} // 7. Daftarkan input 'email'
-                        />
-                        <MdOutlineEmail className={`absolute right-0 text-[#d0d0d2] ${errors.email ? ' text-red-500' : ''} top-1/2  -translate-x-1/2 -translate-y-1/2 transform text-2xl `} />
-                    </div>
-                    {/* 8. Tampilkan pesan error spesifik dari Zod */}
-                    {errors.email && (
-                        <p className='text-red-500 text-sm mt-[0.25rem]'>{errors.email.message}</p>
-                    )}
-                </div>
+          <h1 className="text-4xl font-extrabold text-gray-800 leading-snug">
+            Optimalkan Prioritas <br />
+            <span className="text-[#00A884]">Nasabah Anda</span>
+          </h1>
 
-                <div className='mb-[1rem]'>
-                    <label htmlFor="password" className='block mb-[0.5rem]'>Password</label>
-                    <div className="relative">
-                        <input
-                            id="password"
-                            type="password"
-                            className={`w-full p-[0.75rem] border-2 border-solid border-[#DFE1E6] rounded-md ${(errors.password ? 'border-red-500' : {})}`}
-                            {...register("password")} // 7. Daftarkan input 'password'
-                        />
-                        <LuLockKeyhole className={`absolute right-0 text-[#d0d0d2] ${errors.password ? 'text-red-500' : ''} top-1/2  -translate-x-1/2 -translate-y-1/2 transform text-2xl`} />
-                    </div>
-                    {/* 8. Tampilkan pesan error spesifik dari Zod */}
-                    {errors.password && (
-                        <p className='text-red-500 text-sm mt-[0.25rem]'>{errors.password.message}</p>
-                    )}
-                </div>
+          <div className="flex justify-start pt-4">
+            <Image
+              src="/illustration-login.png"
+              alt="Ilustrasi Login"
+              width={350}
+              height={350}
+              className="w-[350px] h-auto drop-shadow-sm"
+            />
+          </div>
+        </div>
+      </div>
 
+      {/* RIGHT SECTION */}
+      <div className="flex w-full lg:w-1/2 h-screen justify-center items-center px-10 bg-white">
+       <div className="w-full max-w-md p-6 rounded-xl shadow-[0_8px_30px_rgba(0,168,132,0.15)]">
+
+          <h2 className="text-3xl font-extrabold text-gray-800">
+            Masuk ke Scorify
+          </h2>
+
+          <p className="text-gray-500 text-sm mt-1 mb-8">
+            Silakan masuk untuk melanjutkan ke dashboard.
+          </p>
+
+          {/* FORM LOGIN */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+            {/* EMAIL */}
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Email</label>
+
+              <div className="relative">
+                <input
+                  {...register("email")}
+                  type="email"
+                  placeholder="Masukkan email"
+                  className={`w-full border rounded-lg px-4 py-2 pr-12 outline-none transition
+                    ${errors.email
+                      ? "border-red-500 focus:border-[#00A884] focus:ring-2 focus:ring-[#00A884]"
+                      : "border-gray-300 focus:ring-2 focus:ring-[#00A884]"
+                    }`}
+                />
+                
+
+                <IoMailOutline
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-gray-400"
+                />
+              </div>
+
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* PASSWORD */}
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">
+                Password
+              </label>
+
+              <div className="relative">
+                <input
+                  {...register("password")}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan password"
+                  className={`w-full border rounded-lg px-4 py-2 pr-12 outline-none transition appearance-none
+                    ${errors.password
+                      ? "border-red-500 focus:border-[#00A884] focus:ring-2 focus:ring-[#00A884]"
+                      : "border-gray-300 focus:ring-2 focus:ring-[#00A884]"
+                    }`}
+                />
+
+                {/* SHOW / HIDE BUTTON */}
                 <button
-                    type="submit"
-                    className='w-full p-[0.75rem] border-none rounded-md bg-[#FF8E72] text-white mt-3 text-[1rem] font-bold cursor-pointer'
-                    disabled={isSubmitting} // Tombol otomatis disable saat submit
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-gray-400"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                    {isSubmitting ? 'Logging in...' : 'Masuk'}
+                  {showPassword ? <IoEyeOffOutline /> : <IoEyeOutline />}
                 </button>
+              </div>
 
-                {/* Tampilkan error dari server (bukan dari Zod) */}
-                {serverError && (
-                    <p className='text-red-500 mt-[1rem] text-center'>
-                        {serverError}
-                    </p>
-                )}
+              {/* ERROR MESSAGE */}
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
 
-                <p className='text-center mt-6'>
-                    <Link href="/register" className='text-blue-600'>
-                        Lupa password?
-                    </Link>
-                </p>
-            </form>
-        </main>
-    );
+              {/* Lupa Password */}
+              <p className="text-right mt-1 text-sm">
+                <a href="#" className="text-[#00A884] hover:underline">
+                  Lupa password?
+                </a>
+              </p>
+
+            </div>
+
+            {/* LOGIN BUTTON */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#00A884] text-white py-2 rounded-lg font-semibold hover:bg-[#00956d] disabled:opacity-70 transition shadow-sm"
+            >
+              {isSubmitting ? "Memproses..." : "Masuk"}
+            </button>
+
+            {serverError && (
+              <p className="text-red-500 text-center">{serverError}</p>
+            )}
+          </form>
+
+          {/* COPYRIGHT */}
+          <p className="text-center text-xs text-gray-400 mt-14">
+            ©2025 Scorify. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/*THEME VARIABLES (Tailwind v4)*/
 @theme {
   --color-primary: #0B2447;
   --color-accent: #00A884;
@@ -7,10 +8,12 @@
   --color-surface: #FFFFFF;
   --color-text-primary: #1E293B;
   --color-text-secondary: #475569;
+
   --font-sans: "Inter", sans-serif;
   --font-display: "Poppins", sans-serif;
 }
 
+/* GLOBAL STYLING */
 body {
   background: linear-gradient(
     160deg,
@@ -21,4 +24,21 @@ body {
   );
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+/* REMOVE DEFAULT PASSWORD ICONS (Windows, Chrome, Edge, Webkit) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+  opacity: 0;
+}
+
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none !important;
 }

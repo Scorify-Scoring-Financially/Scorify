@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import z from "zod";
 
 const loginSchema = z.object({
-    email: z.string("Email is Required").email("Invalid email format"),
-    password: z.string("Password is required")
+    email: z.string("Email wajib diisi").email("Format email tidak valid"),
+    password: z.string("Password wajib diisi")
 })
 
 export async function POST(request: Request) {
@@ -15,19 +15,20 @@ export async function POST(request: Request) {
 
         if (!validation.success) {
             return NextResponse.json(
-                { error: 'Invalid input', details: validation.error.issues },
+                { error: "Input tidak valid", details: validation.error.issues },
                 { status: 400 }
             );
         }
+
         const { email, password } = validation.data;
 
         const user = await db.user.findUnique({
-            where: { email: email.toLocaleLowerCase() }
+            where: { email: email.toLowerCase() }
         });
 
         if (!user) {
             return NextResponse.json(
-                { error: "Invalid email or password" },
+                { error: "Email atau password salah" },
                 { status: 401 }
             );
         }
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
         const isPasswordValid = await comparePassword(password, user.passwordHash);
         if (!isPasswordValid) {
             return NextResponse.json(
-                { error: "Invalid email or password" },
+                { error: "Email atau password salah" },
                 { status: 401 }
             );
         }
@@ -56,24 +57,25 @@ export async function POST(request: Request) {
         };
 
         const response = NextResponse.json(
-            { message: 'Login successfully', user: userResponse },
+            { message: "Login berhasil", user: userResponse },
             { status: 200 }
         );
 
-        response.cookies.set('token', token, {
+        response.cookies.set("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
             maxAge: 60 * 60 * 24,
-            path: '/'
+            path: "/"
         });
 
         return response;
+
     } catch (e) {
-        console.error('[API_LOGIN_ERROR]', e);
+        console.error("[API_LOGIN_ERROR]", e);
         return NextResponse.json(
-                { error: 'An internal server error occurred' },
-                { status: 500 }
-            );
+            { error: "Terjadi kesalahan pada server" },
+            { status: 500 }
+        );
     }
 }
