@@ -99,7 +99,7 @@ export default function DashboardPage() {
               Daftar Peluang Nasabah
             </h1>
             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Analisis peluang konversi dan pantau performa tim sales Anda.
+              Kelola peluang nasabah dan optimalkan proses penawaran Anda.
             </p>
           </div>
 

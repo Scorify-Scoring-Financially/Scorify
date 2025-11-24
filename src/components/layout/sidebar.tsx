@@ -9,32 +9,46 @@ import {
   Moon,
   Globe,
   LogOut,
+  Users,
 } from "lucide-react";
 
-/* Tambahan untuk mendeteksi halaman aktif */
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; 
 
 export default function Sidebar() {
-  /* State: buka/tutup sidebar */
   const [isOpen, setIsOpen] = useState(true);
-
-  /* State: mode tampilan (light/dark) */
   const [theme, setTheme] = useState("light");
-
-  /* State: dropdown bahasa */
   const [langOpen, setLangOpen] = useState(false);
 
-  /* Ambil URL saat ini */
   const pathname = usePathname();
+  const router = useRouter();
 
-  /* Cek menu aktif sampai halaman turunan */
-  const isActive = (path: string) => pathname.startsWith(path);
+  /* DETECT ROLE dari URL
+     TODO: nanti ini diganti dengan role dari backend setelah login*/
+  const role = pathname.startsWith("/admin") ? "admin" : "user";
 
-  /* Data menu utama — hanya ditambah 'path' */
-  const menuUtama = [
+  /* Menu untuk User */
+  const menuUser = [
     { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
     { icon: <BarChart3 size={20} />, label: "Laporan", path: "/laporan" },
   ];
+
+  /* Menu untuk Admin — tambah menu Sales */
+  const menuAdmin = [
+    { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/admin/dashboard" },
+    { icon: <BarChart3 size={20} />, label: "Laporan", path: "/admin/laporan" },
+    { icon: <Users size={20} />, label: "Sales", path: "/admin/sales" },
+  ];
+
+  /* Pilih menu berdasarkan role */
+  const menuUtama = role === "admin" ? menuAdmin : menuUser;
+
+  /* Cek active termasuk turunan path */
+  const isActive = (p: string) => pathname.startsWith(p);
+
+  const handleLogout = () => {
+    // TODO: nanti remove token & role dari auth backend
+    router.push("/login");
+  };
 
   return (
     <div className={`${isOpen ? "w-64" : "w-20"} relative transition-all duration-300`}>
@@ -43,7 +57,7 @@ export default function Sidebar() {
           isOpen ? "w-64" : "w-20"
         }`}
       >
-        {/* Bagian Atas: Logo dan Tombol Toggle Sidebar */}
+        {/* Bagian Atas */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <img
@@ -64,46 +78,37 @@ export default function Sidebar() {
           </div>
 
           {/* Menu Utama */}
-          <p
-            className={`text-xs font-semibold text-gray-400 mb-2 transition-all ${
-              isOpen ? "opacity-100" : "opacity-0"
-            }`}
-          >
+          <p className={`text-xs font-semibold text-gray-400 mb-2 ${isOpen ? "" : "opacity-0"}`}>
             MENU UTAMA
           </p>
 
           <nav className="flex flex-col gap-1">
-            {menuUtama.map((item) => {
-              const isActive = pathname.startsWith(item.path);
-
-              return (
-                <a
-                  key={item.label}
-                  href={item.path}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                    isActive
-                      ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold"
-                      : "text-gray-700"
-                  } ${!isOpen ? "justify-center" : "justify-start"}`}
-                >
-                  {item.icon}
-                  {isOpen && <span>{item.label}</span>}
-                </a>
-              );
-            })}
+            {menuUtama.map((item) => (
+              <a
+                key={item.label}
+                href={item.path}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                  isActive(item.path)
+                    ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold"
+                    : "text-gray-700"
+                } ${!isOpen ? "justify-center" : "justify-start"}`}
+              >
+                {item.icon}
+                {isOpen && <span>{item.label}</span>}
+              </a>
+            ))}
           </nav>
 
-          {/* Preferensi: Mode Tampilan & Bahasa */}
+          {/* Preferensi */}
           <p
             className={`text-xs font-semibold text-gray-400 mt-6 mb-2 transition-all ${
-              isOpen ? "opacity-100" : "opacity-0"
+              isOpen ? "" : "opacity-0"
             }`}
           >
             PREFERENSI
           </p>
 
           <div className="flex flex-col gap-3">
-            {/* Mode Tampilan */}
             <button
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 ${
@@ -125,20 +130,14 @@ export default function Sidebar() {
                 <Globe size={20} />
                 {isOpen && <span>Bahasa</span>}
               </button>
-
               {langOpen && (
-                <div
-                  className={`absolute z-40 bg-white border rounded-md shadow-md left-12 top-10 ${
-                    isOpen ? "" : "left-14"
-                  }`}
-                >
+                <div className="absolute z-40 bg-white border rounded-md shadow-md left-12 top-10">
                   <button
                     onClick={() => setLangOpen(false)}
                     className="px-4 py-2 text-sm hover:bg-gray-100 w-full text-left"
                   >
                     Indonesia
                   </button>
-
                   <button
                     onClick={() => setLangOpen(false)}
                     className="px-4 py-2 text-sm hover:bg-gray-100 w-full text-left"
@@ -151,33 +150,33 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Bagian Bawah: Profil, Logout, dan Footer */}
+        {/* Profil & Logout */}
         <div className="px-0 pb-4 pt-30">
-          {/* Profil */}
-          <div
-            className={`flex items-center transition-all mb-4 ${
-              isOpen ? "justify-start px-3" : "justify-start px-1"
-            }`}
-          >
+          <div className={`flex items-center mb-4 ${isOpen ? "px-3" : "px-1"}`}>
             <div
-              className={`rounded-full bg-[#00A884] text-white font-bold flex items-center justify-center transition-all ${
-                isOpen ? "w-10 h-10 text-base" : "w-8 h-8 text-sm"
+              className={`rounded-full bg-[#00A884] text-white font-bold flex items-center justify-center ${
+                isOpen ? "w-10 h-10" : "w-8 h-8 text-sm"
               }`}
             >
-              SA
+              {/* TODO: backend set initials sesuai user */}
+              {role === "admin" ? "AD" : "SA"}
             </div>
-
             {isOpen && (
               <div className="ml-3">
-                <p className="text-sm font-semibold">Sales</p>
-                <p className="text-xs text-gray-500">Tim Sales</p>
+                <p className="text-sm font-semibold">
+                  {role === "admin" ? "Admin" : "Sales"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {role === "admin" ? "Administrator" : "Tim Sales"}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Tombol Logout */}
+          {/* Logout */}
           <div className={`flex items-center ${isOpen ? "px-3" : "px-1"}`}>
             <button
+              onClick={handleLogout}
               className={`rounded-lg bg-[var(--color-accent)] text-white font-semibold text-sm hover:bg-[#009970] transition flex items-center justify-center gap-2 ${
                 isOpen ? "w-full h-10" : "w-8 h-8"
               }`}
@@ -187,10 +186,8 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {/* Garis Pemisah */}
           <div className="border-t border-gray-200 mt-4 mb-3" />
 
-          {/* Footer */}
           {isOpen ? (
             <p className="text-xs text-gray-400 text-center">
               © 2025 Scorify. All Rights Reserved.
