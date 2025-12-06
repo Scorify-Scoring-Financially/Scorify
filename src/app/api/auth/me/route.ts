@@ -3,10 +3,10 @@ import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
-        const cookieStore = cookies();
-        const token = cookieStore.get('token');
+        const cookieStore = await cookies();
+        const token = cookieStore.get("token");
 
         if (!token) {
             return NextResponse.json(
@@ -17,9 +17,9 @@ export async function GET(request: Request) {
 
         const payload = await verifyJwt(token.value);
 
-        if (!payload || !payload.id) {
+        if (!payload || !("id" in payload)) {
             return NextResponse.json(
-                { error: 'Unathorized: Invalid Token' },
+                { error: "Unauthorized: Invalid Token" },
                 { status: 401 }
             );
         }
@@ -33,24 +33,27 @@ export async function GET(request: Request) {
                 phone: true,
                 role: true,
                 createdAt: true,
-            }
+            },
         });
+
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        return NextResponse.json({ user: user }, { status: 200 });
-    } catch (error: any) {
-        console.error('[API_ME_ERROR]', error);
+        return NextResponse.json({ user }, { status: 200 });
+    } catch (error) {
+        const err = error as { name?: string; message?: string };
+        console.error("[API_ME_ERROR]", err);
 
-        if (error.name === "JWTExpired" || error.name === 'JOSEError') {
+        if (err.name === "JWTExpired" || err.name === "JOSEError") {
             return NextResponse.json(
-                { error: 'Unauthorized: Token Expired or Invalid' },
+                { error: "Unauthorized: Token Expired or Invalid" },
                 { status: 401 }
             );
         }
+
         return NextResponse.json(
-            { error: 'An internal server error occurred' },
+            { error: "An internal server error occurred" },
             { status: 500 }
         );
     }

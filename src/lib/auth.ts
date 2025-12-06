@@ -1,42 +1,45 @@
 import bcrypt from "bcryptjs";
-import { jwtVerify, SignJWT } from "jose";
+import { jwtVerify, SignJWT, JWTPayload } from "jose";
 
-// ambil jwt secret dari env
+// Ambil JWT secret dari environment
 const JWT_SECRET_RAW = process.env.JWT_SECRET;
 if (!JWT_SECRET_RAW) {
     throw new Error("JWT_SECRET tidak ditemukan di .env");
 }
 
-// mengubah string rahasia kamu menjadi format "byte"
+// Ubah string rahasia menjadi bytes (buffer)
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW);
 
-// function hashpassword
-export async function hashPassword(password: string) {
+// 🔐 Hash password
+export async function hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
-    return await bcrypt.hash(password, salt);
+    return bcrypt.hash(password, salt);
 }
 
-// function cek password
-export async function comparePassword(plaintext: string, hash: string) {
-    return await bcrypt.compare(plaintext, hash);
+// 🔍 Cek password
+export async function comparePassword(
+    plaintext: string,
+    hash: string
+): Promise<boolean> {
+    return bcrypt.compare(plaintext, hash);
 }
 
-// function buat JWT
-export async function signJwt(payload: { id: string; email: string; role: string }) {
+// 🧾 Buat JWT
+export async function signJwt(payload: { id: string; email: string; role: string }): Promise<string> {
     const token = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256' })
+        .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
-        .setExpirationTime('1d')
+        .setExpirationTime("1d")
         .sign(JWT_SECRET);
     return token;
 }
 
-// function ubah wjt
-export async function verifyJwt(token: string): Promise<any | null> {
+// ✅ Verifikasi JWT (tanpa any, aman untuk TypeScript)
+export async function verifyJwt(token: string): Promise<JWTPayload | null> {
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
         return payload;
-    } catch (e) {
-        return null;
+    } catch {
+        return null; // jika invalid / expired
     }
 }

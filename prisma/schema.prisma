@@ -1,4 +1,9 @@
-// File: prisma/schema.prisma
+// ===============================================
+// PRISMA SCHEMA - SCORIFY LEAD SCORING SYSTEM
+// Dibuat oleh: Naufal
+// Versi: Final (Sales Campaign + ML Integration)
+// ===============================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -26,8 +31,10 @@ model User {
 
   // Relasi
   passwordResetTokens PasswordResetToken[]
-  // Relasi ke 'Campaign' (Sales siapa yang mencatat panggilan)
   createdCampaigns    Campaign[]
+
+  // Relasi ke log interaksi (sales/admin yang mencatat)
+  interactionLogs     InteractionLog[]
 }
 
 enum UserRole {
@@ -69,7 +76,7 @@ model Customer {
   job       Job
   marital   MaritalStatus
   education Education
-  default   YesNoUnknown // Memiliki kredit macet?
+  default   YesNoUnknown // Apakah memiliki kredit macet?
   balance   Float
   housing   YesNoUnknown // Memiliki kredit rumah?
   loan      YesNoUnknown // Memiliki pinjaman pribadi?
@@ -78,48 +85,54 @@ model Customer {
   updatedAt DateTime @updatedAt
 
   // Relasi: 1 Customer punya banyak riwayat Kampanye & banyak Skor
-  campaigns  Campaign[]
-  leadScores LeadScore[]
+  campaigns       Campaign[]
+  leadScores      LeadScore[]
+  interactionLogs InteractionLog[]
 
-  // Indeks Performa
-  @@index([name]) // Percepat pencarian berdasarkan nama
+  // Indeks untuk optimasi pencarian
+  @@index([name])
   @@index([email])
 }
 
+
 // --- 2.2. Riwayat Kampanye ---
 model Campaign {
-  id          String   @id @default(cuid())
-  contact     ContactType
-  day_of_week String
-  month       String
-  campaign    Int      // Jumlah kontak di kampanye ini
-  previous    Int      // Jumlah kontak di kampanye sebelumnya
-  pdays       Int
-  poutcome    POutcome
+  id             String   @id @default(cuid())
+
+  // Informasi kontak
+  contact        ContactType
+  day_of_week    String
+  month          String
+  campaign       Int          // Jumlah kontak selama kampanye
+  previous       Int          // Jumlah kontak sebelumnya
+  pdays          Int          // Hari sejak terakhir dihubungi
+  poutcome       POutcome     // Hasil kampanye sebelumnya
+
+  // Hasil akhir kampanye (diset oleh sales)
+  finalDecision  AgreementStatus?
 
   createdAt DateTime @default(now())
 
-  // Relasi: 1 Kampanye milik 1 Customer
+  // Relasi dengan customer & user
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  // Relasi: 1 Kampanye (log) dibuat oleh 1 User (Sales)
   userId String?
-  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull) // Jika user dihapus, log tetap ada
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  // Relasi: 1 Kampanye bisa menghasilkan banyak skor
+  // Relasi ke hasil prediksi ML
   leadScores LeadScore[]
 
-  // Indeks Performa
   @@index([customerId])
   @@index([userId])
-  @@index([month]) // Percepat filter berdasarkan bulan
+  @@index([month])
 }
+
 
 // --- 2.3. Data Makroekonomi ---
 model MacroData {
   id             String   @id @default(cuid())
-  month          String   @unique // Diasumsikan unik per bulan
+  month          String   @unique
   emp_var_rate   Float
   cons_price_idx Float
   cons_conf_idx  Float
@@ -129,26 +142,53 @@ model MacroData {
   createdAt DateTime @default(now())
 }
 
+
 // --- 2.4. Hasil Prediksi Model ---
 model LeadScore {
   id          String     @id @default(cuid())
-  predicted_y Prediction // Prediksi (yes/no)
-  score       Float      // Probabilitas (skor)
+  predicted_y Prediction // yes/no apakah nasabah akan membeli produk
+  score       Float       // probabilitas / confidence score
 
   createdAt DateTime @default(now())
 
-  // Relasi: 1 Skor milik 1 Customer
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  // Relasi: 1 Skor hasil dari 1 Kampanye
   campaignId String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  // Indeks Performa
   @@index([customerId])
   @@index([campaignId])
-  @@index([score]) // Percepat sorting & filter berdasarkan skor
+  @@index([score])
+}
+
+
+// --- 2.5. Riwayat & Catatan Interaksi Nasabah ---
+model InteractionLog {
+  id          String   @id @default(cuid())
+
+  // Jenis interaksi, contoh: "Panggilan Telepon", "Catatan Internal"
+  type        InteractionType
+
+  // Catatan yang ditulis oleh sales/admin
+  note        String
+
+  // Waktu interaksi
+  createdAt   DateTime @default(now())
+
+  // Relasi: interaksi ini milik Customer
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Relasi: siapa yang mencatat (Sales/Admin)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Opsional: hasil panggilan (jika tipe = PANGGILAN_TELEPON)
+  callResult  CallResult?
+
+  @@index([customerId])
+  @@index([userId])
 }
 
 
@@ -177,7 +217,6 @@ enum MaritalStatus {
   divorced
 }
 
-// Catatan: Tanda '.' diganti '_' agar valid di Prisma
 enum Education {
   basic_4y
   basic_6y
@@ -194,6 +233,12 @@ enum YesNoUnknown {
   unknown
 }
 
+enum AgreementStatus {
+  agreed        // Nasabah setuju
+  declined      // Nasabah menolak
+  pending       // Masih menunggu keputusan
+}
+
 enum ContactType {
   cellular
   telephone
@@ -208,4 +253,16 @@ enum POutcome {
 enum Prediction {
   yes
   no
+}
+
+enum InteractionType {
+  PANGGILAN_TELEPON
+  CATATAN_INTERNAL
+}
+
+enum CallResult {
+  success
+  failure
+  no_answer
+  unknown
 }

@@ -1,111 +1,106 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
+import { formatEnumValue } from '@/lib/format'; // helper untuk ubah enum ke teks rapi
+
+// 🚫 Matikan cache Next.js di level server
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = request.nextUrl;
 
-        // 1. Ambil Query Params dari URL
-        // Frontend akan memanggil: /api/customers?page=1&limit=10&search=Ahmad&filter=Tinggi
-
+        // 1️⃣ Ambil Query Params dari URL
         const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10'); // <-- DEFAULT 10
-
+        const limit = parseInt(searchParams.get('limit') || '10');
         const search = searchParams.get('search') || '';
         const filter = searchParams.get('filter') || 'Semua'; // 'Semua', 'Tinggi', 'Sedang', 'Rendah'
 
-        // 2. Kalkulasi untuk pagination
+        // 2️⃣ Pagination offset
         const skip = (page - 1) * limit;
 
-        // 3. Bangun 'where' clause (Filter) secara dinamis
+        // 3️⃣ Bangun kondisi WHERE
         const where: Prisma.CustomerWhereInput = {};
 
-        // Filter berdasarkan Search (Nama)
+        // 🔍 Filter berdasarkan nama
         if (search) {
             where.name = {
                 contains: search,
-                mode: 'insensitive', // Tidak peduli huruf besar/kecil
+                mode: 'insensitive',
             };
         }
 
-        // Filter berdasarkan Skor (Tinggi/Sedang/Rendah)
-        // Ini adalah filter relasi yang kompleks
+        // 🎯 Filter berdasarkan skor
         if (filter === 'Tinggi') {
-            where.leadScores = {
-                some: { score: { gte: 0.8 } }, // Skor >= 80%
-            };
+            where.leadScores = { some: { score: { gte: 0.8 } } };
         } else if (filter === 'Sedang') {
-            where.leadScores = {
-                some: { score: { gte: 0.5, lt: 0.8 } }, // Skor 50% - 79%
-            };
+            where.leadScores = { some: { score: { gte: 0.6, lt: 0.8 } } };
         } else if (filter === 'Rendah') {
-            where.leadScores = {
-                some: { score: { lt: 0.5 } }, // Skor < 50%
-            };
+            where.leadScores = { some: { score: { lt: 0.59 } } };
         }
-        // Jika 'Semua', kita tidak tambahkan filter skor
 
-        // 4. Ambil data (sesuai halaman/limit) dan Total Data (untuk pagination)
-        // Kita jalankan 2 query secara paralel agar cepat
+        // 4️⃣ Jalankan query paralel (data + total)
         const [customers, totalItems] = await db.$transaction([
-            // Query 1: Ambil datanya
             db.customer.findMany({
-                skip: skip,
+                skip,
                 take: limit,
-                where: where,
+                where,
                 include: {
-                    // Ambil skor terbaru
                     leadScores: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
                     },
-                    // Ambil interaksi (kampanye) terbaru
                     campaigns: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
+                        select: {
+                            poutcome: true,
+                            finalDecision: true,
+                        },
                     },
                 },
-                orderBy: {
-                    // TODO: Nanti bisa ditambahkan sort by dinamis
-                    // Untuk saat ini, urutkan berdasarkan skor tertinggi
-                    leadScores: {
-                        _count: 'desc', // Ini trik, tapi lebih baik sort by score
-                    }
-                    // Ganti dengan sort by name jika di atas error
-                    // orderBy: { name: 'asc' }
-                }
+                orderBy: { name: 'asc' },
             }),
-            // Query 2: Hitung total item yang cocok dengan filter (tanpa limit/skip)
-            db.customer.count({
-                where: where,
-            }),
+            db.customer.count({ where }),
         ]);
 
-        // 5. Kalkulasi total halaman
+        // 5️⃣ Hitung total halaman
         const totalPages = Math.ceil(totalItems / limit);
 
-        // 6. Format data balikan agar rapi
+        // 6️⃣ Format data untuk dikirim ke frontend
         const formattedData = customers.map((customer) => ({
             id: customer.id,
             nama: customer.name,
             usia: customer.age,
-            pekerjaan: customer.job,
-            status: customer.loan, // 'yes', 'no', 'unknown'
-            skor: customer.leadScores[0]?.score || null,
-            interaksi: customer.campaigns[0]?.poutcome || 'nonexistent',
+            pekerjaan: formatEnumValue(customer.job),
+            phone: customer.phone ?? '-',          // ✅ penting untuk fitur telepon
+            address: customer.address ?? '-',      // opsional, bisa ditampilkan di UI
+            status: formatEnumValue(customer.campaigns[0]?.finalDecision || 'pending'),
+            skor: customer.leadScores[0]?.score ?? null,
+            interaksi: formatEnumValue(customer.campaigns[0]?.poutcome || 'nonexistent'),
         }));
 
-        // 7. Kirim balikan JSON
-        return NextResponse.json({
-            data: formattedData,
-            pagination: {
-                totalItems,
-                totalPages,
-                currentPage: page,
-                itemsPerPage: limit,
+        // 7️⃣ Return response JSON (tanpa cache)
+        return NextResponse.json(
+            {
+                data: formattedData,
+                pagination: {
+                    totalItems,
+                    totalPages,
+                    currentPage: page,
+                    itemsPerPage: limit,
+                },
             },
-        }, { status: 200 });
+            {
+                status: 200,
+                headers: {
+                    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            }
+        );
 
     } catch (error) {
         console.error('[API_CUSTOMERS_ERROR]', error);

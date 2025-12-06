@@ -16,189 +16,115 @@ import {
   CartesianGrid,
 } from "recharts";
 
-/** Tipe data untuk grafik bar bulanan */
 type MonthlyBar = { month: string; setuju: number; ditolak: number; tertunda: number };
+type SalesUser = { id: string; name: string | null; email: string };
 
-/** Tipe nasabah */
-type Nasabah = {
-  id: number;
-  skor: number; // 0 - 100
-  status: "setuju" | "tertunda" | "ditolak";
-  bulan: string; // "Jan" .. "Des"
+type SummaryResponse = {
+  totalCustomers: number;
+  approvalRate: number;
+  contactedCustomers: number;
+  scoreDistribution: { high: number; medium: number; low: number };
+  months: string[];
+  growth?: {
+    customers: number;
+    approvalRate: number;
+    contacted: number;
+  };
 };
 
-/** Semua bulan lengkap */
-const MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agus","Sep","Okt","Nov","Des"];
-const LOCAL_KEY = "laporan_sales_fullData";
+type MonthlyResponse = { data: MonthlyBar[] };
 
-export default function LaporanSalesPage() {
+const ACCENT = "#00A884";
+
+export default function LaporanAdminPage() {
   // --- State untuk filter ---
-  const [startDate, setStartDate] = useState<string>("2023-01-01");
-  const [endDate, setEndDate] = useState<string>("2023-06-30");
   const [kategori, setKategori] = useState<string>("all");
   const [applied, setApplied] = useState(false);
 
-  // --- State untuk data dan statistik ---
-  const [fullData, setFullData] = useState<Nasabah[]>([]);
+  // --- Filter Sales dan Tahun ---
+  const [salesList, setSalesList] = useState<SalesUser[]>([]);
+  const [selectedSales, setSelectedSales] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // --- Data utama ---
   const [totalCustomers, setTotalCustomers] = useState<number>(0);
   const [approvalRate, setApprovalRate] = useState<number>(0);
   const [contactedCustomers, setContactedCustomers] = useState<number>(0);
-  const [scoreDistribution, setScoreDistribution] = useState({
-    high: 0.45,
-    medium: 0.35,
-    low: 0.2,
-  });
+  const [scoreDistribution, setScoreDistribution] = useState({ high: 0, medium: 0, low: 0 });
   const [monthlyBars, setMonthlyBars] = useState<MonthlyBar[]>([]);
+  const [growth, setGrowth] = useState({ customers: 0, approvalRate: 0, contacted: 0 });
 
-  const ACCENT = "#00A884";
-
-  /** Fungsi helper untuk generate angka random */
-  const randInt = (min: number, max: number) =>
-    Math.floor(Math.random() * (max - min + 1)) + min;
-
-  /** LOAD / GENERATE DATA NASABAH PERSISTED DI LOCALSTORAGE */
+  // --- Load Sales ---
   useEffect(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(LOCAL_KEY) : null;
-    if (raw) {
+    const loadSales = async () => {
       try {
-        const parsed: Nasabah[] = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setFullData(parsed);
-          setTimeout(() => applyFilterFromData("all", parsed), 0);
-          return;
-        }
-      } catch {}
-    }
-
-    // Generate data random
-    const list: Nasabah[] = [];
-
-    // Pastikan setiap bulan muncul minimal 1 data
-    for (let i = 0; i < MONTHS.length; i++) {
-      const skor = randInt(0, 100);
-      const r = Math.random();
-      let status: Nasabah["status"] = r < 0.6 ? "setuju" : r < 0.85 ? "tertunda" : "ditolak";
-      list.push({ id: i + 1, skor, status, bulan: MONTHS[i] });
-    }
-
-    // Tambah data random sampai total 50
-    for (let i = 12; i < 50; i++) {
-      const skor = randInt(0, 100);
-      const r = Math.random();
-      let status: Nasabah["status"] = r < 0.6 ? "setuju" : r < 0.85 ? "tertunda" : "ditolak";
-      const bulan = MONTHS[randInt(0, MONTHS.length - 1)];
-      list.push({ id: i + 1, skor, status, bulan });
-    }
-
-    try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
-    } catch {}
-
-    setFullData(list);
-    setTimeout(() => applyFilterFromData("all", list), 0);
+        const res = await fetch("/api/reports/admin/sales", { cache: "no-store" });
+        const data = await res.json();
+        setSalesList(data.sales || []);
+      } catch (e) {
+        console.error("Load sales error:", e);
+      }
+    };
+    loadSales();
   }, []);
 
-  /** APPLY FILTER DAN HITUNG STATISTIK */
-  const applyFilterFromData = (kategoriParam: string, full = fullData) => {
-    const totalAll = full.length || 1;
+  // --- Load summary dan monthly dari API ---
+  const fetchSummaryAndMonthly = async () => {
+    const params = new URLSearchParams();
+    if (selectedSales !== "all") params.set("salesId", selectedSales);
+    if (selectedYear) params.set("year", String(selectedYear));
 
-    const getCat = (sk: number) => (sk >= 80 ? "high" : sk >= 60 ? "medium" : "low");
+    const [summaryRes, monthlyRes] = await Promise.all([
+      fetch(`/api/reports/admin/summary?${params.toString()}`, { cache: "no-store" }),
+      fetch(`/api/reports/admin/monthly?${params.toString()}`, { cache: "no-store" }),
+    ]);
 
-    const countsAll = { high: 0, medium: 0, low: 0 };
-    full.forEach((n) => countsAll[getCat(n.skor) as keyof typeof countsAll]++);
+    const summary: SummaryResponse = await summaryRes.json();
+    const monthly: MonthlyResponse = await monthlyRes.json();
 
-    const filtered =
-      kategoriParam === "all"
-        ? full
-        : full.filter((n) => {
-            const c = getCat(n.skor);
-            if (kategoriParam === "tinggi") return c === "high";
-            if (kategoriParam === "sedang") return c === "medium";
-            return c === "low";
-          });
+    const { high, medium, low } = summary.scoreDistribution;
 
-    const totalFiltered = filtered.length;
-    setTotalCustomers(totalFiltered);
-
-    const approveCount = filtered.filter((n) => n.status === "setuju").length;
-    setApprovalRate(totalFiltered > 0 ? approveCount / totalFiltered : 0);
-
-    const contactedCount = filtered.filter((n) => n.status !== "tertunda").length;
-    setContactedCustomers(contactedCount);
-
-    const bars = MONTHS.map((m) => {
-      const byMonth = filtered.filter((n) => n.bulan === m);
-      return {
-        month: m,
-        setuju: byMonth.filter((x) => x.status === "setuju").length,
-        ditolak: byMonth.filter((x) => x.status === "ditolak").length,
-        tertunda: byMonth.filter((x) => x.status === "tertunda").length,
-      };
-    });
-    setMonthlyBars(bars);
-
-    // Set distribusi skor
-    if (kategoriParam === "all") {
-      setScoreDistribution({
-        high: countsAll.high / totalAll,
-        medium: countsAll.medium / totalAll,
-        low: countsAll.low / totalAll,
-      });
-    } else {
-      const mapKey = kategoriParam === "tinggi" ? "high" : kategoriParam === "sedang" ? "medium" : "low";
-      setScoreDistribution({
-        high: mapKey === "high" ? countsAll.high / totalAll : 0,
-        medium: mapKey === "medium" ? countsAll.medium / totalAll : 0,
-        low: mapKey === "low" ? countsAll.low / totalAll : 0,
-      });
-    }
-
-    setApplied(true);
+    setTotalCustomers(summary.totalCustomers);
+    setApprovalRate(summary.approvalRate);
+    setContactedCustomers(summary.contactedCustomers);
+    setScoreDistribution({ high, medium, low });
+    setGrowth(summary.growth || { customers: 0, approvalRate: 0, contacted: 0 });
+    setMonthlyBars(monthly.data || []);
   };
 
-  /** Trigger filter dari UI */
-  const handleApplyFilter = () => applyFilterFromData(kategori);
+  useEffect(() => {
+    fetchSummaryAndMonthly().catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSales, selectedYear]);
 
-  /** Data untuk grafik donat */
+  const handleApplyFilter = () => {
+    setApplied(true);
+    fetchSummaryAndMonthly().catch(console.error);
+  };
+
+  // --- Donut Data ---
   const donutData = useMemo(() => {
-    const high = scoreDistribution.high;
-    const med = scoreDistribution.medium;
-    const low = scoreDistribution.low;
+    let { high, medium, low } = scoreDistribution;
 
-    const pctHigh = Math.round(high * 100);
-    const pctMed = Math.round(med * 100);
-    const pctLow = Math.round(low * 100);
+    // Pastikan total > 0 agar tetap tampil
+    const total = high + medium + low;
+    if (total === 0) {
+      high = 0.33;
+      medium = 0.33;
+      low = 0.34;
+    }
 
-    const isAll = pctHigh + pctMed + pctLow === 100;
-
-    if (isAll)
-      return [
-        { name: "Skor Tinggi", value: pctHigh },
-        { name: "Skor Sedang", value: pctMed },
-        { name: "Skor Rendah", value: pctLow },
-      ];
-
-    if (pctHigh > 0) return [{ name: "Skor Tinggi", value: pctHigh }, { name: "Lainnya", value: Math.max(0, 100 - pctHigh) }];
-    if (pctMed > 0) return [{ name: "Skor Sedang", value: pctMed }, { name: "Lainnya", value: Math.max(0, 100 - pctMed) }];
-    if (pctLow > 0) return [{ name: "Skor Rendah", value: pctLow }, { name: "Lainnya", value: Math.max(0, 100 - pctLow) }];
-
-    return [{ name: "Lainnya", value: 100 }];
+    return [
+      { name: "Skor Tinggi", value: Math.round(high * 100) },
+      { name: "Skor Sedang", value: Math.round(medium * 100) },
+      { name: "Skor Rendah", value: Math.round(low * 100) },
+    ];
   }, [scoreDistribution]);
 
-  /** Warna donat */
-  const DONUT_COLORS = useMemo(() => {
-    if (donutData.length === 3) return ["#00A884", "#F2C94C", "#F05A47"];
-    const primary = donutData[0]?.name || "Lainnya";
-    const gray = "#E5E7EB";
-    if (primary === "Skor Tinggi") return ["#00A884", gray];
-    if (primary === "Skor Sedang") return ["#F2C94C", gray];
-    if (primary === "Skor Rendah") return ["#F05A47", gray];
-    return [gray, gray];
-  }, [donutData]);
-
+  const DONUT_COLORS = ["#00A884", "#F2C94C", "#F05A47"];
   const formatPercent = (n: number) => `${Math.round(n * 100)}%`;
 
-  /** Download CSV */
+  // --- Download CSV ---
   const handleDownloadCSV = () => {
     const rows = monthlyBars.map((m) => `${m.month},${m.setuju},${m.ditolak},${m.tertunda}`).join("\n");
     const csv = `bulan,setuju,ditolak,tertunda\n${rows}`;
@@ -206,36 +132,28 @@ export default function LaporanSalesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "laporan-sales.csv";
+    a.download = "laporan-admin.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // --- Utility untuk warna growth ---
+  const GrowthText = ({ value }: { value: number }) => (
+    <span className={`text-sm ${value >= 0 ? "text-green-600" : "text-red-500"} self-end`}>
+      {value >= 0 ? "+" : ""}
+      {value.toFixed(2)}%
+    </span>
+  );
 
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4] font-sans">
       <Sidebar />
       <main className="flex-1 p-8 space-y-6">
-        {/* Judul dan filter */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800 mb-3">Laporan Admin</h1>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
-            />
-
-            <span className="text-gray-400 text-xs">—</span>
-
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
-            />
-
             <select
               value={kategori}
               onChange={(e) => setKategori(e.target.value)}
@@ -248,10 +166,16 @@ export default function LaporanSalesPage() {
             </select>
 
             <select
-              disabled
-              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs bg-gray-100 text-gray-500"
+              value={selectedSales}
+              onChange={(e) => setSelectedSales(e.target.value)}
+              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
             >
-              <option>Semua Sales</option>
+              <option value="all">Semua Sales</option>
+              {salesList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name || s.email}
+                </option>
+              ))}
             </select>
 
             <button
@@ -273,34 +197,36 @@ export default function LaporanSalesPage() {
           </div>
         </div>
 
-        {/* Statistik utama */}
+        {/* Statistik Utama */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Total Nasabah</p>
             <div className="flex items-baseline gap-4">
               <h2 className="text-3xl font-extrabold">{totalCustomers.toLocaleString()}</h2>
-              <span className="text-sm text-green-600 self-end">+15.80%</span>
+              <GrowthText value={growth.customers} />
             </div>
           </div>
+
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Tingkat Persetujuan Deposit</p>
             <div className="flex items-baseline gap-4">
               <h2 className="text-3xl font-extrabold">{formatPercent(approvalRate)}</h2>
-              <span className="text-sm text-green-600 self-end">+5.50%</span>
+              <GrowthText value={growth.approvalRate} />
             </div>
           </div>
+
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Jumlah Nasabah Dihubungi</p>
             <div className="flex items-baseline gap-4">
               <h2 className="text-3xl font-extrabold">{contactedCustomers.toLocaleString()}</h2>
-              <span className="text-sm text-red-500 self-end">-10.5%</span>
+              <GrowthText value={growth.contacted} />
             </div>
           </div>
         </div>
 
         {/* Grafik */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Distribusi skor */}
+          {/* Donut Chart */}
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <h3 className="font-semibold mb-4">Distribusi Skor Nasabah</h3>
             <div style={{ width: "100%", height: 260 }}>
@@ -336,7 +262,7 @@ export default function LaporanSalesPage() {
             </div>
           </div>
 
-          {/* Status penawaran deposit */}
+          {/* Bar Chart */}
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <h3 className="font-semibold mb-4">Status Penawaran Deposit</h3>
             <div style={{ width: "100%", height: 320 }}>
@@ -356,7 +282,6 @@ export default function LaporanSalesPage() {
           </div>
         </div>
 
-        {/* Status filter */}
         <div className="text-sm text-gray-500">{applied ? "Filter diterapkan" : "Tidak ada filter aktif"}</div>
       </main>
     </div>

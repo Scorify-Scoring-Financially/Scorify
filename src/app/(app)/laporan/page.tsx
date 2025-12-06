@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import {
   PieChart,
@@ -15,206 +15,145 @@ import {
   Legend,
   CartesianGrid,
 } from "recharts";
+import useSWR from "swr";
 
-/** Tipe data untuk grafik bar bulanan */
-type MonthlyBar = { month: string; setuju: number; ditolak: number; tertunda: number };
-
-/** tipe nasabah */
-type Nasabah = {
-  id: number;
-  skor: number; // 0 - 100
-  status: "setuju" | "tertunda" | "ditolak";
-  bulan: string; // "Jan" .. "Des"
+type MonthlyBar = {
+  month: string;
+  setuju: number;
+  ditolak: number;
+  tertunda: number;
 };
 
-/** Semua bulan lengkap */
-const MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agus","Sep","Okt","Nov","Des"];
-const LOCAL_KEY = "laporan_sales_fullData";
+type Status = "all" | "agreed" | "declined" | "pending";
+
+const ACCENT = "#00A884";
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Agus",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function LaporanSalesPage() {
-  const [startDate, setStartDate] = useState<string>("2023-01-01");
-  const [endDate, setEndDate] = useState<string>("2023-06-30");
+  const thisYear = new Date().getFullYear();
   const [kategori, setKategori] = useState<string>("all");
-  const [applied, setApplied] = useState(false);
+  const [year, setYear] = useState<number>(thisYear);
+  const [status, setStatus] = useState<Status>("all");
 
-  const [fullData, setFullData] = useState<Nasabah[]>([]);
-  const [totalCustomers, setTotalCustomers] = useState<number>(0);
-  const [approvalRate, setApprovalRate] = useState<number>(0);
-  const [contactedCustomers, setContactedCustomers] = useState<number>(0);
-  const [scoreDistribution, setScoreDistribution] = useState({
-    high: 0.45,
-    medium: 0.35,
-    low: 0.2,
-  });
-  const [monthlyBars, setMonthlyBars] = useState<MonthlyBar[]>([]);
+  // Fetch data
+  const { data: summaryData } = useSWR(
+    `/api/reports/sales/summary?year=${year}`,
+    fetcher
+  );
+  const { data: monthlyBars } = useSWR<MonthlyBar[]>(
+    `/api/reports/sales/monthly?year=${year}&status=${status}`,
+    fetcher
+  );
 
-  const ACCENT = "#00A884";
+  // Fallback
+  const totalCustomers = summaryData?.totalCustomers ?? 0;
+  const approvalRate = summaryData?.approvalRate ?? 0;
+  const contactedCustomers = summaryData?.contactedCustomers ?? 0;
+  const scoreDistributionApi =
+    summaryData?.scoreDistribution ?? { high: 0, medium: 0, low: 0 };
 
-  const randInt = (min: number, max: number) =>
-    Math.floor(Math.random() * (max - min + 1)) + min;
-
-  /** GENERATE / LOAD 50 NASABAH (persist) */
-  useEffect(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(LOCAL_KEY) : null;
-    if (raw) {
-      try {
-        const parsed: Nasabah[] = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setFullData(parsed);
-          setTimeout(() => applyFilterFromData("all", parsed), 0);
-          return;
-        }
-      } catch {}
-    }
-
-    const list: Nasabah[] = [];
-
-    // Pastikan semua bulan muncul 
-    for (let i = 0; i < MONTHS.length; i++) {
-      const skor = randInt(0, 100);
-      const r = Math.random();
-      let status: Nasabah["status"] = "setuju";
-      if (r < 0.6) status = "setuju";
-      else if (r < 0.85) status = "tertunda";
-      else status = "ditolak";
-      const bulan = MONTHS[i];
-      list.push({ id: i + 1, skor, status, bulan });
-    }
-
-    // Remaining 50 - 12 = 38 entries random
-    for (let i = 12; i < 50; i++) {
-      const skor = randInt(0, 100);
-      const r = Math.random();
-      let status: Nasabah["status"] = "setuju";
-      if (r < 0.6) status = "setuju";
-      else if (r < 0.85) status = "tertunda";
-      else status = "ditolak";
-      const bulan = MONTHS[randInt(0, MONTHS.length - 1)];
-      list.push({ id: i + 1, skor, status, bulan });
-    }
-
-    try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
-    } catch {}
-
-    setFullData(list);
-    setTimeout(() => applyFilterFromData("all", list), 0);
-  }, []);
-
-  /** APPLY FILTER */
-  const applyFilterFromData = (kategoriParam: string, full = fullData) => {
-    const totalAll = full.length || 1;
-
-    const getCat = (sk: number) => {
-      if (sk >= 80) return "high";
-      if (sk >= 60) return "medium";
-      return "low";
-    };
-
-    const countsAll = { high: 0, medium: 0, low: 0 };
-    full.forEach((n) => {
-      const c = getCat(n.skor);
-      countsAll[c as keyof typeof countsAll] += 1;
-    });
-
-    const filtered =
-      kategoriParam === "all"
-        ? full
-        : full.filter((n) => {
-            const c = getCat(n.skor);
-            if (kategoriParam === "tinggi") return c === "high";
-            if (kategoriParam === "sedang") return c === "medium";
-            return c === "low";
-          });
-
-    const totalFiltered = filtered.length;
-    setTotalCustomers(totalFiltered);
-
-    const approveCount = filtered.filter((n) => n.status === "setuju").length;
-    setApprovalRate(totalFiltered > 0 ? approveCount / totalFiltered : 0);
-
-    const contactedCount = filtered.filter((n) => n.status !== "tertunda").length;
-    setContactedCustomers(contactedCount);
-
-    const bars = MONTHS.map((m) => {
-      const byMonth = filtered.filter((n) => n.bulan === m);
+  // Donut filter
+  const scoreDistribution = useMemo(() => {
+    if (kategori === "all") return scoreDistributionApi;
+    if (kategori === "tinggi")
       return {
-        month: m,
-        setuju: byMonth.filter((x) => x.status === "setuju").length,
-        ditolak: byMonth.filter((x) => x.status === "ditolak").length,
-        tertunda: byMonth.filter((x) => x.status === "tertunda").length,
+        high: scoreDistributionApi.high,
+        medium: 0,
+        low: 0,
       };
-    });
-    setMonthlyBars(bars);
+    if (kategori === "sedang")
+      return {
+        high: 0,
+        medium: scoreDistributionApi.medium,
+        low: 0,
+      };
+    return {
+      high: 0,
+      medium: 0,
+      low: scoreDistributionApi.low,
+    };
+  }, [kategori, scoreDistributionApi]);
 
-    if (kategoriParam === "all") {
-      setScoreDistribution({
-        high: countsAll.high / totalAll,
-        medium: countsAll.medium / totalAll,
-        low: countsAll.low / totalAll,
-      });
-    } else {
-      const mapKey = kategoriParam === "tinggi" ? "high" : kategoriParam === "sedang" ? "medium" : "low";
-      setScoreDistribution({
-        high: mapKey === "high" ? countsAll.high / totalAll : 0,
-        medium: mapKey === "medium" ? countsAll.medium / totalAll : 0,
-        low: mapKey === "low" ? countsAll.low / totalAll : 0,
-      });
-    }
-
-    setApplied(true);
-  };
-
-  const handleApplyFilter = () => {
-    applyFilterFromData(kategori);
-  };
-
+  // Donut data
   const donutData = useMemo(() => {
-    const high = scoreDistribution.high;
-    const med = scoreDistribution.medium;
-    const low = scoreDistribution.low;
+    const high = Math.round((scoreDistribution.high || 0) * 100);
+    const med = Math.round((scoreDistribution.medium || 0) * 100);
+    const low = Math.round((scoreDistribution.low || 0) * 100);
 
-    const pctHigh = Math.round(high * 100);
-    const pctMed = Math.round(med * 100);
-    const pctLow = Math.round(low * 100);
-
-    const isAll = pctHigh + pctMed + pctLow === 100;
-
-    if (isAll) {
+    const sum = high + med + low;
+    if (sum === 100) {
       return [
-        { name: "Skor Tinggi", value: pctHigh },
-        { name: "Skor Sedang", value: pctMed },
-        { name: "Skor Rendah", value: pctLow },
+        { name: "Skor Tinggi", value: high },
+        { name: "Skor Sedang", value: med },
+        { name: "Skor Rendah", value: low },
       ];
     }
-
-    if (pctHigh > 0) return [{ name: "Skor Tinggi", value: pctHigh }, { name: "Lainnya", value: Math.max(0, 100 - pctHigh) }];
-    if (pctMed > 0) return [{ name: "Skor Sedang", value: pctMed }, { name: "Lainnya", value: Math.max(0, 100 - pctMed) }];
-    if (pctLow > 0) return [{ name: "Skor Rendah", value: pctLow }, { name: "Lainnya", value: Math.max(0, 100 - pctLow) }];
-
+    if (high > 0)
+      return [
+        { name: "Skor Tinggi", value: high },
+        { name: "Lainnya", value: Math.max(0, 100 - high) },
+      ];
+    if (med > 0)
+      return [
+        { name: "Skor Sedang", value: med },
+        { name: "Lainnya", value: Math.max(0, 100 - med) },
+      ];
+    if (low > 0)
+      return [
+        { name: "Skor Rendah", value: low },
+        { name: "Lainnya", value: Math.max(0, 100 - low) },
+      ];
     return [{ name: "Lainnya", value: 100 }];
   }, [scoreDistribution]);
 
   const DONUT_COLORS = useMemo(() => {
-    if (donutData.length === 3) return ["#00A884", "#F2C94C", "#F05A47"];
+    if (donutData.length === 3)
+      return ["#00A884", "#F2C94C", "#F05A47"];
+
     const primary = donutData[0]?.name || "Lainnya";
     const gray = "#E5E7EB";
+
     if (primary === "Skor Tinggi") return ["#00A884", gray];
     if (primary === "Skor Sedang") return ["#F2C94C", gray];
     if (primary === "Skor Rendah") return ["#F05A47", gray];
     return [gray, gray];
   }, [donutData]);
 
-  const formatPercent = (n: number) => `${Math.round(n * 100)}%`;
+  const formatPercent = (n: number) => `${Math.round((n || 0) * 100)}%`;
 
   const handleDownloadCSV = () => {
-    const rows = monthlyBars.map((m) => `${m.month},${m.setuju},${m.ditolak},${m.tertunda}`).join("\n");
+    const rows = (
+      monthlyBars ??
+      MONTHS.map((m) => ({
+        month: m,
+        setuju: 0,
+        ditolak: 0,
+        tertunda: 0,
+      }))
+    )
+      .map((m) => `${m.month},${m.setuju},${m.ditolak},${m.tertunda}`)
+      .join("\n");
+
     const csv = `bulan,setuju,ditolak,tertunda\n${rows}`;
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "laporan-sales.csv";
+    a.download = `laporan-sales-${year}-${status}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -222,59 +161,137 @@ export default function LaporanSalesPage() {
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4] font-sans">
       <Sidebar />
+
       <main className="flex-1 p-8 space-y-6">
+        {/* HEADER */}
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-800">Laporan Sales</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Laporan Sales
+          </h1>
+
           <div className="flex items-center gap-3">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm" />
-            <span className="text-gray-400">—</span>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm" />
-            <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm">
+            {/* Dropdown kategori */}
+            <select
+              value={kategori}
+              onChange={(e) => setKategori(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm"
+            >
               <option value="all">Semua Kategori</option>
               <option value="tinggi">Skor Tinggi</option>
               <option value="sedang">Skor Sedang</option>
               <option value="rendah">Skor Rendah</option>
             </select>
-            <button onClick={handleApplyFilter} className="flex items-center gap-2 rounded-lg px-3 py-2 border border-[var(--color-accent,#00A884)] text-[var(--color-accent,#00A884)] font-semibold text-sm bg-white transition hover:bg-[var(--color-accent,#00A884)] hover:text-white">Terapkan Filter</button>
-            <button onClick={handleDownloadCSV} className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[var(--color-accent)] text-white text-sm font-semibold shadow transition hover:bg-[#009970]">
-              <span className="material-symbols-outlined text-sm">download</span>Unduh CSV
+
+            {/* Tahun */}
+            <select
+              value={year}
+              onChange={(e) => setYear(parseInt(e.target.value, 10))}
+              className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm"
+            >
+              <option value={thisYear - 2}>{thisYear - 2}</option>
+              <option value={thisYear - 1}>{thisYear - 1}</option>
+              <option value={thisYear}>{thisYear}</option>
+              <option value={thisYear + 1}>{thisYear + 1}</option>
+            </select>
+
+            {/* Status */}
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Status)}
+              className="px-3 py-2 rounded-lg border border-gray-200 outline-none text-sm"
+            >
+              <option value="all">Semua Status</option>
+              <option value="agreed">Setuju</option>
+              <option value="declined">Ditolak</option>
+              <option value="pending">Tertunda</option>
+            </select>
+
+            {/* Tombol filter */}
+            <button
+              className="flex items-center gap-2 rounded-lg px-3 py-2 border border-[var(--color-accent,#00A884)] text-[var(--color-accent,#00A884)] font-semibold text-sm bg-white transition hover:bg-[var(--color-accent,#00A884)] hover:text-white"
+            >
+              Terapkan Filter
+            </button>
+
+            {/* Unduh CSV */}
+            <button
+              onClick={handleDownloadCSV}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 bg-[var(--color-accent)] text-white text-sm font-semibold shadow transition hover:bg-[#009970]"
+            >
+              <span className="material-symbols-outlined text-sm">
+                download
+              </span>
+              Unduh CSV
             </button>
           </div>
         </div>
 
+        {/* KPI CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Total Nasabah</p>
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-extrabold">{totalCustomers.toLocaleString()}</h2>
-              <span className="text-sm text-green-600 self-end">+15.80%</span>
+              <h2 className="text-3xl font-extrabold">
+                {totalCustomers.toLocaleString()}
+              </h2>
+              <span className="text-sm text-green-600 self-end">
+                +15.80%
+              </span>
             </div>
           </div>
+
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
-            <p className="text-sm text-gray-500">Tingkat Persetujuan Deposit</p>
+            <p className="text-sm text-gray-500">
+              Tingkat Persetujuan Deposit
+            </p>
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-extrabold">{formatPercent(approvalRate)}</h2>
-              <span className="text-sm text-green-600 self-end">+5.50%</span>
+              <h2 className="text-3xl font-extrabold">
+                {formatPercent(approvalRate)}
+              </h2>
+              <span className="text-sm text-green-600 self-end">
+                +5.50%
+              </span>
             </div>
           </div>
+
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
-            <p className="text-sm text-gray-500">Jumlah Nasabah Dihubungi</p>
+            <p className="text-sm text-gray-500">
+              Jumlah Nasabah Dihubungi
+            </p>
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-extrabold">{contactedCustomers.toLocaleString()}</h2>
-              <span className="text-sm text-red-500 self-end">-10.5%</span>
+              <h2 className="text-3xl font-extrabold">
+                {contactedCustomers.toLocaleString()}
+              </h2>
+              <span className="text-sm text-red-500 self-end">
+                -10.5%
+              </span>
             </div>
           </div>
         </div>
 
+        {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Donut */}
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <h3 className="font-semibold mb-4">Distribusi Skor Nasabah</h3>
             <div style={{ width: "100%", height: 260 }}>
               <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={donutData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={3} startAngle={90} endAngle={-270}>
-                    {donutData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                  <Pie
+                    data={donutData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={3}
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {donutData.map((_, i) => (
+                      <Cell
+                        key={`cell-${i}`}
+                        fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      />
                     ))}
                   </Pie>
                 </PieChart>
@@ -282,8 +299,16 @@ export default function LaporanSalesPage() {
             </div>
             <div className="mt-4 flex flex-row gap-6 justify-center">
               {donutData.map((d, i) => (
-                <div className="flex items-center gap-3" key={`legend-${i}`}>
-                  <div className="w-3 h-3 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                <div
+                  className="flex items-center gap-3"
+                  key={`legend-${i}`}
+                >
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      background: DONUT_COLORS[i % DONUT_COLORS.length],
+                    }}
+                  />
                   <div>
                     <p className="text-sm font-medium">{d.name}</p>
                     <p className="text-sm text-gray-500">{d.value}%</p>
@@ -293,16 +318,35 @@ export default function LaporanSalesPage() {
             </div>
           </div>
 
+          {/* Bar chart */}
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <h3 className="font-semibold mb-4">Status Penawaran Deposit</h3>
             <div style={{ width: "100%", height: 320 }}>
               <ResponsiveContainer>
-                <BarChart data={monthlyBars}>
+                <BarChart
+                  data={
+                    monthlyBars ??
+                    MONTHS.map((m) => ({
+                      month: m,
+                      setuju: 0,
+                      ditolak: 0,
+                      tertunda: 0,
+                    }))
+                  }
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                 <XAxis dataKey="month" interval={0} tick={{ fontSize: 12, fill: "#4B5563" }}/>
+                  <XAxis
+                    dataKey="month"
+                    interval={0}
+                    tick={{ fontSize: 12, fill: "#4B5563" }}
+                  />
                   <YAxis />
                   <Tooltip />
-                  <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ textAlign: "center", width: "100%" }} />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    wrapperStyle={{ textAlign: "center", width: "100%" }}
+                  />
                   <Bar dataKey="setuju" stackId="a" name="Setuju" fill={ACCENT} />
                   <Bar dataKey="ditolak" stackId="a" name="Ditolak" fill="#F05A47" />
                   <Bar dataKey="tertunda" stackId="a" name="Tertunda" fill="#F2C94C" />
@@ -312,7 +356,10 @@ export default function LaporanSalesPage() {
           </div>
         </div>
 
-        <div className="text-sm text-gray-500">{applied ? "Filter diterapkan" : "Tidak ada filter aktif"}</div>
+        <div className="text-sm text-gray-500">
+          Data tahun <b>{year}</b> • Status:{" "}
+          <b>{status === "all" ? "Semua" : status}</b>
+        </div>
       </main>
     </div>
   );

@@ -34,7 +34,6 @@ export default function AdminCustomerDetailPage() {
   const [customer, setCustomer] = useState<CustomerDetails | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newNote, setNewNote] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -113,19 +112,17 @@ export default function AdminCustomerDetailPage() {
           </div>
 
           <div
-            className={`inline-flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-semibold border shadow-sm bg-white ${
-              customer.deposit === "yes"
-                ? "border-green-500"
-                : "border-red-500"
-            }`}
+            className={`inline-flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-semibold border shadow-sm bg-white ${customer.deposit === "yes"
+              ? "border-green-500"
+              : "border-red-500"
+              }`}
           >
             <span>Status Penawaran:</span>
             <select
               value={customer.deposit}
               disabled
-              className={`ml-1 px-1 py-0.5 rounded-lg font-semibold outline-none text-sm bg-gray-100 cursor-not-allowed ${
-                customer.deposit === "yes" ? "text-green-700" : "text-red-600"
-              }`}
+              className={`ml-1 px-1 py-0.5 rounded-lg font-semibold outline-none text-sm bg-gray-100 cursor-not-allowed ${customer.deposit === "yes" ? "text-green-700" : "text-red-600"
+                }`}
             >
               <option value="yes">Disetujui</option>
               <option value="no">Ditolak</option>
