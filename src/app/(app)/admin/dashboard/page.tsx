@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/components/layout/Sidebar.tsx";
 
 type Filter = "Semua" | "Tinggi" | "Sedang" | "Rendah";
 
