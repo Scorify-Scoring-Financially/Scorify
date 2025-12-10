@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/components/_layout/Sidebar";
 
 interface SalesItem {
   id: string;
