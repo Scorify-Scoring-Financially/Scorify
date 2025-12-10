@@ -6,7 +6,7 @@
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Phone, FileText, ArrowLeft, Plus } from "lucide-react";
-import Sidebar from "@/components/layout/Sidebar.tsx";
+import Sidebar from "@/components/layout/Sidebar";
 
 type CustomerDetails = {
   id: string;

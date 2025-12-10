@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import Sidebar from "@/components/layout/Sidebar.tsx";
+import Sidebar from "@/components/layout/Sidebar";
 import { Phone } from "lucide-react";
 
 type Filter = "Semua" | "Tinggi" | "Sedang" | "Rendah";

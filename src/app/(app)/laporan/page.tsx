@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Sidebar from "@/components/layout/Sidebar.tsx";
+import Sidebar from "@/components/layout/Sidebar";
 import {
   PieChart,
   Pie,
