@@ -224,7 +224,7 @@ export default function DashboardAdminPage() {
                     <th className="px-3 py-2">Pekerjaan</th>
                     <th className="px-3 py-2">Skor</th>
                     <th className="px-3 py-2">Sales</th>
-                    <th className="px-3 py-2">Interaksi</th>
+                    <th className="px-3 py-2">Panggilan</th>
                   </tr>
                 </thead>
 
@@ -306,18 +306,58 @@ export default function DashboardAdminPage() {
                   Sebelumnya
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setPage(n)}
-                    className={`h-8 w-8 rounded-md border flex items-center justify-center ${n === currentPage
-                      ? "bg-[var(--color-accent)] text-white"
-                      : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+                {(() => {
+                  const maxVisible = 5;
+                  const pages: number[] = [];
+                  let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                  const end = Math.min(totalPages, start + maxVisible - 1);
+                  if (end - start + 1 < maxVisible) {
+                    start = Math.max(1, end - maxVisible + 1);
+                  }
+
+                  for (let i = start; i <= end; i++) pages.push(i);
+
+                  return (
+                    <>
+                      {start > 1 && (
+                        <>
+                          <button
+                            onClick={() => setPage(1)}
+                            className="h-8 w-8 rounded-md border flex items-center justify-center text-gray-700 hover:bg-gray-50"
+                          >
+                            1
+                          </button>
+                          {start > 2 && <span className="px-2">...</span>}
+                        </>
+                      )}
+
+                      {pages.map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setPage(n)}
+                          className={`h-8 w-8 rounded-md border flex items-center justify-center ${n === currentPage
+                            ? "bg-[var(--color-accent)] text-white"
+                            : "text-gray-700 hover:bg-gray-50"
+                            }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+
+                      {end < totalPages && (
+                        <>
+                          {end < totalPages - 1 && <span className="px-2">...</span>}
+                          <button
+                            onClick={() => setPage(totalPages)}
+                            className="h-8 w-8 rounded-md border flex items-center justify-center text-gray-700 hover:bg-gray-50"
+                          >
+                            {totalPages}
+                          </button>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
 
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

@@ -118,19 +118,37 @@ export default function CustomerDetailPage() {
 
       if (!res.ok) throw new Error("Gagal menyimpan panggilan");
 
+      // ✅ Tambahkan log baru ke history
       const newLog: HistoryItem = {
         id: Date.now().toString(),
         type: "Panggilan Telepon",
         date: new Date().toISOString(),
         note: callNote,
-        result: `Hasil: ${callResult}. `
+        result: `Hasil: ${callResult === "success"
+          ? "Berhasil"
+          : callResult === "failure"
+            ? "Gagal"
+            : callResult === "no_answer"
+              ? "Tidak Dijawab"
+              : "Tidak Diketahui"
+          }.`,
       };
 
+
       setHistory((prev) => [newLog, ...prev]);
+
+      // ✅ Update data customer di state (tanpa reload)
       setCustomer((prev) =>
-        prev ? { ...prev, statusPenawaran: statusPenawaranCall } : prev
+        prev
+          ? {
+            ...prev,
+            statusKontak: callResult,
+            statusPenawaran: statusPenawaranCall,
+          }
+          : prev
       );
 
+      // ✅ Tutup modal dan reset input
       setShowCallModal(false);
       setCallNote("");
       setCallResult("unknown");
@@ -141,6 +159,7 @@ export default function CustomerDetailPage() {
       setIsSubmitting(false);
     }
   };
+
 
 
   // 🧠 Semua hooks sudah di atas, baru boleh ada return kondisi di bawah sini
@@ -193,6 +212,19 @@ export default function CustomerDetailPage() {
         : " text-red-500";
   }
 
+  const translateStatusKontak = (status: string) => {
+    switch (status) {
+      case "success":
+        return "Berhasil";
+      case "failure":
+        return "Gagal";
+      case "no_answer":
+        return "Tidak Dijawab";
+      case "unknown":
+      default:
+        return "Tidak Diketahui";
+    }
+  };
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4] font-sans">
       <Sidebar />
@@ -285,11 +317,11 @@ export default function CustomerDetailPage() {
               </div>
 
               <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 flex flex-col text-center justify-center">
-                <p className="text-sm text-gray-500 mb-2 font-semibold">Status Kontak</p>
+                <p className="text-sm text-gray-500 mb-2 font-semibold">Hasil Panggilan</p>
                 <span
                   className={`${getStatusColor(customer.statusKontak)} px-3 py-1.5 rounded-full text-sm font-semibold self-center mb-3`}
                 >
-                  {customer.statusKontak}
+                  {translateStatusKontak(customer.statusKontak)}
                 </span>
                 <button
                   onClick={handleCallClick}

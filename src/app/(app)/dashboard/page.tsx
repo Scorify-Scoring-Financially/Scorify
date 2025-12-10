@@ -225,9 +225,9 @@ export default function DashboardPage() {
                     <th className="px-3 py-2">Nama</th>
                     <th className="px-3 py-2">Usia</th>
                     <th className="px-3 py-2">Pekerjaan</th>
-                    <th className="px-3 py-2">Status Deposito</th>
+                    <th className="px-3 py-2">Status Penawaran</th>
                     <th className="px-3 py-2">Skor</th>
-                    <th className="px-3 py-2">Interaksi</th>
+                    <th className="px-3 py-2">Panggilan</th>
                     <th className="px-3 py-2 text-center">Aksi</th>
                   </tr>
                 </thead>

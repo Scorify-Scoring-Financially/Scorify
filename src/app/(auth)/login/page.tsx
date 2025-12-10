@@ -31,6 +31,7 @@ export default function LoginPage() {
   });
 
   // HANDLE LOGIN SUBMIT
+  // HANDLE LOGIN SUBMIT
   const onSubmit = async (data: LoginFormValues) => {
     setServerError(null);
 
@@ -41,15 +42,26 @@ export default function LoginPage() {
         body: JSON.stringify(data),
       });
 
+      const result = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        setServerError(errorData.error || "Login gagal. Coba lagi.");
+        setServerError(result.error || "Login gagal. Coba lagi.");
         return;
       }
 
-      router.push("/dashboard");
+      // === CEK ROLE DARI RESPONSE LOGIN ===
+      if (result.user?.role === "Admin") {
+        router.push("/admin/dashboard");
+      } else if (result.user?.role === "Sales") {
+        router.push("/dashboard");
+      } else {
+        // fallback kalau role tidak dikenal
+        router.push("/");
+      }
+
       router.refresh();
     } catch (err) {
+      console.error(err);
       setServerError("Terjadi kesalahan. Coba lagi.");
     }
   };
@@ -87,7 +99,7 @@ export default function LoginPage() {
 
       {/* RIGHT SECTION */}
       <div className="flex w-full lg:w-1/2 h-screen justify-center items-center px-10 bg-white">
-       <div className="w-full max-w-md p-6 rounded-xl shadow-[0_8px_30px_rgba(0,168,132,0.15)]">
+        <div className="w-full max-w-md p-6 rounded-xl shadow-[0_8px_30px_rgba(0,168,132,0.15)]">
 
           <h2 className="text-3xl font-extrabold text-gray-800">
             Masuk ke Scorify
@@ -115,7 +127,7 @@ export default function LoginPage() {
                       : "border-gray-300 focus:ring-2 focus:ring-[#00A884]"
                     }`}
                 />
-                
+
 
                 <IoMailOutline
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-gray-400"

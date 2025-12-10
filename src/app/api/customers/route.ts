@@ -1,46 +1,59 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
-import { formatEnumValue } from '@/lib/format'; // helper untuk ubah enum ke teks rapi
+import { NextResponse, type NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+import { formatEnumValue } from "@/lib/format";
 
-// 🚫 Matikan cache Next.js di level server
+// Non-cache
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Kamus manual untuk terjemahan enum → Bahasa Indonesia
+const translateMap: Record<string, string> = {
+    pending: "Tertunda",
+    agreed: "Disetujui",
+    declined: "Ditolak",
+    success: "Berhasil",
+    failure: "Gagal",
+    "no_answer": "Tidak Dijawab",
+    unknown: "Tidak Diketahui",
+    nonexistent: "Tidak Ada",
+};
+
+// Fungsi bantu untuk terjemahkan hasil enum ke Bahasa Indonesia
+function translateValue(value: string | null | undefined): string {
+    if (!value) return "-";
+    const lower = value.toLowerCase();
+    return translateMap[lower] || value;
+}
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = request.nextUrl;
 
-        // 1️⃣ Ambil Query Params dari URL
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
-        const search = searchParams.get('search') || '';
-        const filter = searchParams.get('filter') || 'Semua'; // 'Semua', 'Tinggi', 'Sedang', 'Rendah'
+        // Pagination & filter params
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "10");
+        const search = searchParams.get("search") || "";
+        const filter = searchParams.get("filter") || "Semua";
 
-        // 2️⃣ Pagination offset
         const skip = (page - 1) * limit;
-
-        // 3️⃣ Bangun kondisi WHERE
         const where: Prisma.CustomerWhereInput = {};
 
-        // 🔍 Filter berdasarkan nama
+        // Filter nama
         if (search) {
-            where.name = {
-                contains: search,
-                mode: 'insensitive',
-            };
+            where.name = { contains: search, mode: "insensitive" };
         }
 
-        // 🎯 Filter berdasarkan skor
-        if (filter === 'Tinggi') {
+        // Filter skor
+        if (filter === "Tinggi") {
             where.leadScores = { some: { score: { gte: 0.8 } } };
-        } else if (filter === 'Sedang') {
+        } else if (filter === "Sedang") {
             where.leadScores = { some: { score: { gte: 0.6, lt: 0.8 } } };
-        } else if (filter === 'Rendah') {
-            where.leadScores = { some: { score: { lt: 0.59 } } };
+        } else if (filter === "Rendah") {
+            where.leadScores = { some: { score: { lt: 0.6 } } };
         }
 
-        // 4️⃣ Jalankan query paralel (data + total)
+        // Jalankan query paralel
         const [customers, totalItems] = await db.$transaction([
             db.customer.findMany({
                 skip,
@@ -48,40 +61,44 @@ export async function GET(request: NextRequest) {
                 where,
                 include: {
                     leadScores: {
-                        orderBy: { createdAt: 'desc' },
+                        orderBy: { createdAt: "desc" },
                         take: 1,
                     },
                     campaigns: {
-                        orderBy: { createdAt: 'desc' },
+                        orderBy: { createdAt: "desc" },
                         take: 1,
                         select: {
-                            poutcome: true,
                             finalDecision: true,
                         },
                     },
+                    interactionLogs: {
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                        select: {
+                            callResult: true,
+                        },
+                    },
                 },
-                orderBy: { name: 'asc' },
+                orderBy: { name: "asc" },
             }),
             db.customer.count({ where }),
         ]);
 
-        // 5️⃣ Hitung total halaman
         const totalPages = Math.ceil(totalItems / limit);
 
-        // 6️⃣ Format data untuk dikirim ke frontend
+        // Format data akhir
         const formattedData = customers.map((customer) => ({
             id: customer.id,
             nama: customer.name,
             usia: customer.age,
             pekerjaan: formatEnumValue(customer.job),
-            phone: customer.phone ?? '-',          // ✅ penting untuk fitur telepon
-            address: customer.address ?? '-',      // opsional, bisa ditampilkan di UI
-            status: formatEnumValue(customer.campaigns[0]?.finalDecision || 'pending'),
+            phone: customer.phone ?? "-",
+            address: customer.address ?? "-",
+            status: translateValue(customer.campaigns[0]?.finalDecision || "pending"),
             skor: customer.leadScores[0]?.score ?? null,
-            interaksi: formatEnumValue(customer.campaigns[0]?.poutcome || 'nonexistent'),
+            interaksi: translateValue(customer.interactionLogs[0]?.callResult || "unknown"),
         }));
 
-        // 7️⃣ Return response JSON (tanpa cache)
         return NextResponse.json(
             {
                 data: formattedData,
@@ -101,11 +118,10 @@ export async function GET(request: NextRequest) {
                 },
             }
         );
-
     } catch (error) {
-        console.error('[API_CUSTOMERS_ERROR]', error);
+        console.error("[API_CUSTOMERS_ERROR]", error);
         return NextResponse.json(
-            { error: 'An internal server error occurred' },
+            { error: "Terjadi kesalahan pada server" },
             { status: 500 }
         );
     }

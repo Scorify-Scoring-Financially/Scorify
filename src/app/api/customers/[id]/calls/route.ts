@@ -2,11 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-type Context = { params: { id: string } };
-
-export async function POST(request: NextRequest, context: Context) {
+// ✅ Next.js 15 route handler type
+export async function POST(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const { id } = context.params;
+        const { id } = await context.params;
         const body = await request.json();
         const { note, callResult, statusPenawaran } = body;
 

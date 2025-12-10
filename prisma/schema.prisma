@@ -1,258 +1,187 @@
-// ===============================================
-// PRISMA SCHEMA - SCORIFY LEAD SCORING SYSTEM
-// Dibuat oleh: Naufal
-// Versi: Final (Sales Campaign + ML Integration)
-// ===============================================
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// ===============================================
-// 1. MODEL UNTUK AUTENTIKASI APLIKASI
-// (Sales / Admin yang menggunakan portal)
-// ===============================================
+// ============================================
+//  MODEL USER DAN AUTENTIKASI
+// ============================================
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  phone        String?
-  passwordHash String
-  role         UserRole @default(Sales)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String               @id @default(cuid()) @db.VarChar(255)
+  email               String               @unique @db.VarChar(255)
+  name                String?              @db.VarChar(255)
+  phone               String?              @db.VarChar(255)
+  passwordHash        String               @db.VarChar(255)
+  role                String               @default("Sales") @db.VarChar(50)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   // Relasi
-  passwordResetTokens PasswordResetToken[]
   createdCampaigns    Campaign[]
-
-  // Relasi ke log interaksi (sales/admin yang mencatat)
   interactionLogs     InteractionLog[]
-}
-
-enum UserRole {
-  Sales
-  Admin
+  passwordResetTokens PasswordResetToken[]
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String   @id @default(cuid()) @db.VarChar(255)
+  token     String   @unique @db.VarChar(255)
   expiresAt DateTime
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  userId    String   @db.VarChar(255)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
+// ============================================
+//  MODEL CUSTOMER
+// ============================================
 
-// ===============================================
-// 2. MODEL UNTUK DATA LEAD SCORING 
-// (Data nasabah/customer yang akan di-skor)
-// ===============================================
-
-// --- 2.1. Tabel Utama: Customer ---
 model Customer {
-  id      String @id @default(cuid())
-  
-  // Data Personal (PII)
-  name    String
-  email   String @unique
-  phone   String?
-  address String? // Alamat versi 1 baris
+  id              String           @id @default(cuid()) @db.VarChar(255)
+  name            String           @db.VarChar(255)
+  email           String           @unique @db.VarChar(255)
+  phone           String?          @db.VarChar(255)
+  address         String?
+  age             Int
+  job             String           @default("unknown") @db.VarChar(50)
+  marital         String           @default("unknown") @db.VarChar(50)
+  education       String           @default("unknown") @db.VarChar(50)
+  default         String           @default("unknown") @db.VarChar(20)
+  balance         Float            @db.Real
+  housing         String           @default("unknown") @db.VarChar(20)
+  loan            String           @default("unknown") @db.VarChar(20)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  // Data Demografis (untuk Model ML)
-  age       Int
-  job       Job
-  marital   MaritalStatus
-  education Education
-  default   YesNoUnknown // Apakah memiliki kredit macet?
-  balance   Float
-  housing   YesNoUnknown // Memiliki kredit rumah?
-  loan      YesNoUnknown // Memiliki pinjaman pribadi?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relasi: 1 Customer punya banyak riwayat Kampanye & banyak Skor
+  // Relasi
   campaigns       Campaign[]
-  leadScores      LeadScore[]
   interactionLogs InteractionLog[]
+  leadScores      LeadScore[]
+  leadscore       leadscore[]
 
-  // Indeks untuk optimasi pencarian
   @@index([name])
   @@index([email])
 }
 
+// ============================================
+//  MODEL CAMPAIGN (dengan relasi finalDecision)
+// ============================================
 
-// --- 2.2. Riwayat Kampanye ---
 model Campaign {
-  id             String   @id @default(cuid())
+  id             String      @id @default(cuid()) @db.VarChar(255)
+  contact        String      @default("unknown") @db.VarChar(50)
+  day_of_week    String      @default("unknown") @db.VarChar(50)
+  month          String      @default("unknown") @db.VarChar(50)
+  campaign       Int
+  previous       Int
+  pdays          Int
+  poutcome       String      @default("unknown") @db.VarChar(50)
+  createdAt      DateTime    @default(now())
 
-  // Informasi kontak
-  contact        ContactType
-  day_of_week    String
-  month          String
-  campaign       Int          // Jumlah kontak selama kampanye
-  previous       Int          // Jumlah kontak sebelumnya
-  pdays          Int          // Hari sejak terakhir dihubungi
-  poutcome       POutcome     // Hasil kampanye sebelumnya
+  // Relasi utama
+  customerId     String      @db.VarChar(255)
+  userId         String?     @db.VarChar(255)
+  customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  // Hasil akhir kampanye (diset oleh sales)
+  // Tambahan dari schema baru (finalDecision)
   finalDecision  AgreementStatus?
 
-  createdAt DateTime @default(now())
-
-  // Relasi dengan customer & user
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  userId String?
-  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  // Relasi ke hasil prediksi ML
-  leadScores LeadScore[]
+  // Relasi ke skor dan prediksi
+  leadScores     LeadScore[]
+  leadscore      leadscore[]
 
   @@index([customerId])
   @@index([userId])
   @@index([month])
 }
 
+// ============================================
+//  MODEL MACRODATA
+// ============================================
 
-// --- 2.3. Data Makroekonomi ---
 model MacroData {
-  id             String   @id @default(cuid())
-  month          String   @unique
-  emp_var_rate   Float
-  cons_price_idx Float
-  cons_conf_idx  Float
-  euribor3m      Float
-  nr_employed    Float
-
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid()) @db.VarChar(255)
+  month          String   @unique @db.VarChar(50)
+  emp_var_rate   Float    @db.Real
+  cons_price_idx Float    @db.Real
+  cons_conf_idx  Float    @db.Real
+  euribor3m      Float    @db.Real
+  nr_employed    Float    @db.Real
+  createdAt      DateTime @default(now())
 }
 
+// ============================================
+//  MODEL LEADSCORE (modern)
+// ============================================
 
-// --- 2.4. Hasil Prediksi Model ---
 model LeadScore {
-  id          String     @id @default(cuid())
-  predicted_y Prediction // yes/no apakah nasabah akan membeli produk
-  score       Float       // probabilitas / confidence score
+  id            String    @id @default(cuid()) @db.VarChar
+  customerId    String    @db.VarChar
+  campaignId    String    @db.VarChar
+  predicted_y   String?   @db.VarChar
+  score         Float?
+  threshold     Float?
+  model_version String?   @db.VarChar
+  batch_id      String?   @db.VarChar
+  createdAt     DateTime? @db.Timestamp(6)
 
-  createdAt DateTime @default(now())
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: NoAction)
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: NoAction)
 
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  campaignId String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  @@index([customerId])
-  @@index([campaignId])
-  @@index([score])
+  @@index([batch_id], map: "ix_LeadScore_batch_id")
+  @@index([id], map: "ix_LeadScore_id")
 }
 
+// ============================================
+//  MODEL INTERACTION LOG (pakai enum modern)
+// ============================================
 
-// --- 2.5. Riwayat & Catatan Interaksi Nasabah ---
 model InteractionLog {
-  id          String   @id @default(cuid())
-
-  // Jenis interaksi, contoh: "Panggilan Telepon", "Catatan Internal"
-  type        InteractionType
-
-  // Catatan yang ditulis oleh sales/admin
+  id          String          @id @default(cuid()) @db.VarChar(255)
+  type        InteractionType @default(CATATAN_INTERNAL)
   note        String
+  createdAt   DateTime        @default(now())
+  customerId  String          @db.VarChar(255)
+  userId      String?         @db.VarChar(255)
+  callResult  CallResult?     @default(unknown)
 
-  // Waktu interaksi
-  createdAt   DateTime @default(now())
-
-  // Relasi: interaksi ini milik Customer
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  // Relasi: siapa yang mencatat (Sales/Admin)
-  userId      String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  // Opsional: hasil panggilan (jika tipe = PANGGILAN_TELEPON)
-  callResult  CallResult?
+  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([userId])
 }
 
+// ============================================
+//  MODEL LEADSCORE (lama, tetap dipertahankan)
+// ============================================
 
-// ===============================================
-// 3. ENUMS / KATEGORI TETAP
-// ===============================================
-
-enum Job {
-  admin
-  technician
-  services
-  management
-  retired
-  blue_collar
-  unemployed
-  entrepreneur
-  housemaid
-  self_employed
-  student
-  unknown
+model leadscore {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerid  String    @db.VarChar
+  campaignid  String    @db.VarChar
+  predicted_y String    @db.VarChar
+  score       Float?
+  createdat   DateTime? @default(now()) @db.Timestamp(6)
+  Campaign    Campaign  @relation(fields: [campaignid], references: [id], onDelete: NoAction, map: "fk_campaign")
+  Customer    Customer  @relation(fields: [customerid], references: [id], onDelete: NoAction, map: "fk_customer")
 }
 
-enum MaritalStatus {
-  married
-  single
-  divorced
-}
-
-enum Education {
-  basic_4y
-  basic_6y
-  basic_9y
-  high_school
-  university_degree
-  professional_course
-  unknown
-}
-
-enum YesNoUnknown {
-  yes
-  no
-  unknown
-}
+// ============================================
+//  ENUMS MODERN (khusus Interaction dan Campaign)
+// ============================================
 
 enum AgreementStatus {
-  agreed        // Nasabah setuju
-  declined      // Nasabah menolak
-  pending       // Masih menunggu keputusan
-}
-
-enum ContactType {
-  cellular
-  telephone
-}
-
-enum POutcome {
-  nonexistent
-  failure
-  success
-}
-
-enum Prediction {
-  yes
-  no
+  agreed
+  declined
+  pending
 }
 
 enum InteractionType {

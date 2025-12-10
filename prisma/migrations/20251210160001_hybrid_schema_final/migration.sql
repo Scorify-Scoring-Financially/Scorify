@@ -1,29 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('Sales', 'Admin');
-
--- CreateEnum
-CREATE TYPE "Job" AS ENUM ('admin', 'technician', 'services', 'management', 'retired', 'blue_collar', 'unemployed', 'entrepreneur', 'housemaid', 'self_employed', 'student', 'unknown');
-
--- CreateEnum
-CREATE TYPE "MaritalStatus" AS ENUM ('married', 'single', 'divorced');
-
--- CreateEnum
-CREATE TYPE "Education" AS ENUM ('basic_4y', 'basic_6y', 'basic_9y', 'high_school', 'university_degree', 'professional_course', 'unknown');
-
--- CreateEnum
-CREATE TYPE "YesNoUnknown" AS ENUM ('yes', 'no', 'unknown');
-
--- CreateEnum
 CREATE TYPE "AgreementStatus" AS ENUM ('agreed', 'declined', 'pending');
-
--- CreateEnum
-CREATE TYPE "ContactType" AS ENUM ('cellular', 'telephone');
-
--- CreateEnum
-CREATE TYPE "POutcome" AS ENUM ('nonexistent', 'failure', 'success');
-
--- CreateEnum
-CREATE TYPE "Prediction" AS ENUM ('yes', 'no');
 
 -- CreateEnum
 CREATE TYPE "InteractionType" AS ENUM ('PANGGILAN_TELEPON', 'CATATAN_INTERNAL');
@@ -33,12 +9,12 @@ CREATE TYPE "CallResult" AS ENUM ('success', 'failure', 'no_answer', 'unknown');
 
 -- CreateTable
 CREATE TABLE "User" (
-    "id" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "name" TEXT,
-    "phone" TEXT,
-    "passwordHash" TEXT NOT NULL,
-    "role" "UserRole" NOT NULL DEFAULT 'Sales',
+    "id" VARCHAR(255) NOT NULL,
+    "email" VARCHAR(255) NOT NULL,
+    "name" VARCHAR(255),
+    "phone" VARCHAR(255),
+    "passwordHash" VARCHAR(255) NOT NULL,
+    "role" VARCHAR(50) NOT NULL DEFAULT 'Sales',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -47,10 +23,10 @@ CREATE TABLE "User" (
 
 -- CreateTable
 CREATE TABLE "PasswordResetToken" (
-    "id" TEXT NOT NULL,
-    "token" TEXT NOT NULL,
+    "id" VARCHAR(255) NOT NULL,
+    "token" VARCHAR(255) NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
-    "userId" TEXT NOT NULL,
+    "userId" VARCHAR(255) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY ("id")
@@ -58,19 +34,19 @@ CREATE TABLE "PasswordResetToken" (
 
 -- CreateTable
 CREATE TABLE "Customer" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "phone" TEXT,
+    "id" VARCHAR(255) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "email" VARCHAR(255) NOT NULL,
+    "phone" VARCHAR(255),
     "address" TEXT,
     "age" INTEGER NOT NULL,
-    "job" "Job" NOT NULL,
-    "marital" "MaritalStatus" NOT NULL,
-    "education" "Education" NOT NULL,
-    "default" "YesNoUnknown" NOT NULL,
-    "balance" DOUBLE PRECISION NOT NULL,
-    "housing" "YesNoUnknown" NOT NULL,
-    "loan" "YesNoUnknown" NOT NULL,
+    "job" VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    "marital" VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    "education" VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    "default" VARCHAR(20) NOT NULL DEFAULT 'unknown',
+    "balance" REAL NOT NULL,
+    "housing" VARCHAR(20) NOT NULL DEFAULT 'unknown',
+    "loan" VARCHAR(20) NOT NULL DEFAULT 'unknown',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -79,31 +55,31 @@ CREATE TABLE "Customer" (
 
 -- CreateTable
 CREATE TABLE "Campaign" (
-    "id" TEXT NOT NULL,
-    "contact" "ContactType" NOT NULL,
-    "day_of_week" TEXT NOT NULL,
-    "month" TEXT NOT NULL,
+    "id" VARCHAR(255) NOT NULL,
+    "contact" VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    "day_of_week" VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    "month" VARCHAR(50) NOT NULL DEFAULT 'unknown',
     "campaign" INTEGER NOT NULL,
     "previous" INTEGER NOT NULL,
     "pdays" INTEGER NOT NULL,
-    "poutcome" "POutcome" NOT NULL,
-    "finalDecision" "AgreementStatus",
+    "poutcome" VARCHAR(50) NOT NULL DEFAULT 'unknown',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "customerId" TEXT NOT NULL,
-    "userId" TEXT,
+    "customerId" VARCHAR(255) NOT NULL,
+    "userId" VARCHAR(255),
+    "finalDecision" "AgreementStatus",
 
     CONSTRAINT "Campaign_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "MacroData" (
-    "id" TEXT NOT NULL,
-    "month" TEXT NOT NULL,
-    "emp_var_rate" DOUBLE PRECISION NOT NULL,
-    "cons_price_idx" DOUBLE PRECISION NOT NULL,
-    "cons_conf_idx" DOUBLE PRECISION NOT NULL,
-    "euribor3m" DOUBLE PRECISION NOT NULL,
-    "nr_employed" DOUBLE PRECISION NOT NULL,
+    "id" VARCHAR(255) NOT NULL,
+    "month" VARCHAR(50) NOT NULL,
+    "emp_var_rate" REAL NOT NULL,
+    "cons_price_idx" REAL NOT NULL,
+    "cons_conf_idx" REAL NOT NULL,
+    "euribor3m" REAL NOT NULL,
+    "nr_employed" REAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "MacroData_pkey" PRIMARY KEY ("id")
@@ -111,27 +87,42 @@ CREATE TABLE "MacroData" (
 
 -- CreateTable
 CREATE TABLE "LeadScore" (
-    "id" TEXT NOT NULL,
-    "predicted_y" "Prediction" NOT NULL,
-    "score" DOUBLE PRECISION NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "customerId" TEXT NOT NULL,
-    "campaignId" TEXT NOT NULL,
+    "id" VARCHAR NOT NULL,
+    "customerId" VARCHAR NOT NULL,
+    "campaignId" VARCHAR NOT NULL,
+    "predicted_y" VARCHAR,
+    "score" DOUBLE PRECISION,
+    "threshold" DOUBLE PRECISION,
+    "model_version" VARCHAR,
+    "batch_id" VARCHAR,
+    "createdAt" TIMESTAMP(6),
 
     CONSTRAINT "LeadScore_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "InteractionLog" (
-    "id" TEXT NOT NULL,
-    "type" "InteractionType" NOT NULL,
+    "id" VARCHAR(255) NOT NULL,
+    "type" "InteractionType" NOT NULL DEFAULT 'CATATAN_INTERNAL',
     "note" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "customerId" TEXT NOT NULL,
-    "userId" TEXT,
-    "callResult" "CallResult",
+    "customerId" VARCHAR(255) NOT NULL,
+    "userId" VARCHAR(255),
+    "callResult" "CallResult" DEFAULT 'unknown',
 
     CONSTRAINT "InteractionLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "leadscore" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "customerid" VARCHAR NOT NULL,
+    "campaignid" VARCHAR NOT NULL,
+    "predicted_y" VARCHAR NOT NULL,
+    "score" DOUBLE PRECISION,
+    "createdat" TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "leadscore_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -165,13 +156,10 @@ CREATE INDEX "Campaign_month_idx" ON "Campaign"("month");
 CREATE UNIQUE INDEX "MacroData_month_key" ON "MacroData"("month");
 
 -- CreateIndex
-CREATE INDEX "LeadScore_customerId_idx" ON "LeadScore"("customerId");
+CREATE INDEX "ix_LeadScore_batch_id" ON "LeadScore"("batch_id");
 
 -- CreateIndex
-CREATE INDEX "LeadScore_campaignId_idx" ON "LeadScore"("campaignId");
-
--- CreateIndex
-CREATE INDEX "LeadScore_score_idx" ON "LeadScore"("score");
+CREATE INDEX "ix_LeadScore_id" ON "LeadScore"("id");
 
 -- CreateIndex
 CREATE INDEX "InteractionLog_customerId_idx" ON "InteractionLog"("customerId");
@@ -189,13 +177,19 @@ ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_customerId_fkey" FOREIGN KEY ("c
 ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "LeadScore" ADD CONSTRAINT "LeadScore_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "LeadScore" ADD CONSTRAINT "LeadScore_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "LeadScore" ADD CONSTRAINT "LeadScore_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "LeadScore" ADD CONSTRAINT "LeadScore_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InteractionLog" ADD CONSTRAINT "InteractionLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "leadscore" ADD CONSTRAINT "fk_campaign" FOREIGN KEY ("campaignid") REFERENCES "Campaign"("id") ON DELETE NO ACTION ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "leadscore" ADD CONSTRAINT "fk_customer" FOREIGN KEY ("customerid") REFERENCES "Customer"("id") ON DELETE NO ACTION ON UPDATE CASCADE;

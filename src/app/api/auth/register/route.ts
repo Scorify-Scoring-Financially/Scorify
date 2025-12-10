@@ -1,41 +1,36 @@
 import { hashPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import z from "zod";
 
-// validation schema
 const registerSchema = z.object({
   email: z
-    .string("Email is required")
+    .string()
+    .min(1, "Email is required")
     .email("Invalid email format"),
   name: z
-    .string("Name is required")
-    .min(1, "Name cannot be empty"),
+    .string()
+    .min(1, "Name is required"),
   phone: z
-    .string("Phone number is required")
+    .string()
     .min(10, "Phone number must be at least 10 digits")
     .max(15, "Phone number cannot exceed 15 digits")
     .regex(/^[0-9]+$/, "Phone number must contain only digits"),
   passwordHash: z
-    .string("Password is required")
+    .string()
     .min(6, "Password must be at least 6 characters long"),
-  role: z.nativeEnum(UserRole).default(UserRole.Sales),
+  role: z.string().default("Sales"),
 });
 
 const updateSchema = registerSchema.extend({
-  id: z.string("Id is Required")
+  id: z.string().min(1, "Id is required"),
 });
-
 
 export async function POST(request: Request) {
   try {
-    // get request body
     const body = await request.json();
 
-    // validate input
     const validation = registerSchema.safeParse(body);
-
     if (!validation.success) {
       return NextResponse.json(
         { error: "Invalid input", details: validation.error.issues },
@@ -45,7 +40,6 @@ export async function POST(request: Request) {
 
     const { email, passwordHash, phone, name, role } = validation.data;
 
-    // check if email already exists
     const existingUser = await db.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -57,24 +51,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // hash password
     const hashedPassword = await hashPassword(passwordHash);
 
-    // create user
     const newUser = await db.user.create({
       data: {
         email: email.toLowerCase(),
         passwordHash: hashedPassword,
         name,
         phone,
-        role,
+        role: role || "Sales",
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-      },
+      select: { id: true, email: true, name: true, role: true },
     });
 
     return NextResponse.json(
@@ -90,14 +77,16 @@ export async function POST(request: Request) {
   }
 }
 
-
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const validation = updateSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ error: "Invalid Input", details: validation.error.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid Input", details: validation.error.issues },
+        { status: 400 }
+      );
     }
 
     const { id, email, passwordHash, phone, name, role } = validation.data;
@@ -112,22 +101,24 @@ export async function PUT(request: Request) {
     const updatedUser = await db.user.update({
       where: { id },
       data: {
-        email: email.toLocaleLowerCase(),
+        email: email.toLowerCase(),
         passwordHash: hashedPassword,
         name,
         phone,
-        role
+        role: role || "Sales",
       },
-      select: { id: true, email: true, name: true, role: true }
+      select: { id: true, email: true, name: true, role: true },
     });
 
     return NextResponse.json(
       { message: "User Updated Successfully", user: updatedUser },
       { status: 200 }
     );
-
   } catch (e) {
-     console.error("[API_UPDATE_REGISTER_ERROR]", e);
-    return NextResponse.json({ error: "An unexpected server error occurred" }, { status: 500 });
+    console.error("[API_UPDATE_REGISTER_ERROR]", e);
+    return NextResponse.json(
+      { error: "An unexpected server error occurred" },
+      { status: 500 }
+    );
   }
 }

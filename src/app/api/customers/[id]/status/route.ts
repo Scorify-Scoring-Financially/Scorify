@@ -2,16 +2,17 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-type Context = {
-    params: { id: string };
-};
-
-export async function PATCH(request: NextRequest, context: Context) {
+// ✅ Format resmi untuk Next.js 15 (params adalah Promise)
+export async function PATCH(
+    request: NextRequest,
+    context: { params: Promise<{ id: string }> }
+) {
     try {
-        const { id } = context.params;
+        const { id } = await context.params; // ⬅️ HARUS pakai await
         const body = await request.json();
         const { statusPenawaran } = body;
 
+        // 🧩 Validasi input
         if (!id || !statusPenawaran) {
             return NextResponse.json(
                 { error: "Customer ID dan status penawaran wajib diisi" },
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, context: Context) {
             );
         }
 
-        // Ambil campaign terakhir dari customer ini
+        // 🧠 Ambil campaign terakhir dari customer ini
         const latestCampaign = await db.campaign.findFirst({
             where: { customerId: id },
             orderBy: { createdAt: "desc" },
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest, context: Context) {
             );
         }
 
-        // Update status penawaran di campaign
+        // ✅ Update status penawaran di campaign
         const updated = await db.campaign.update({
             where: { id: latestCampaign.id },
             data: { finalDecision: statusPenawaran },
@@ -44,6 +45,7 @@ export async function PATCH(request: NextRequest, context: Context) {
         );
     } catch (error) {
         console.error("[API_UPDATE_STATUS_PENAWARAN_ERROR]", error);
+
         if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === "P2023"
@@ -53,6 +55,7 @@ export async function PATCH(request: NextRequest, context: Context) {
                 { status: 400 }
             );
         }
+
         return NextResponse.json(
             { error: "Terjadi kesalahan pada server" },
             { status: 500 }
