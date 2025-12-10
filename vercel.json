@@ -23,9 +23,6 @@
     "autoJobCancelation": true,
     "silent": false
   },
-  "eslint": {
-    "ignoreDuringBuilds": true
-  },
   "cache": {
     "paths": [
       "node_modules/.cache",
