@@ -84,11 +84,11 @@ export async function GET(request: NextRequest) {
             select: { customerId: true, score: true },
         });
 
-        // Ambil latest per customer
+        // Ambil latest per customer (null diganti 0)
         const latestPerCustomer = new Map<string, number>();
         for (const s of scored) {
             if (!latestPerCustomer.has(s.customerId)) {
-                latestPerCustomer.set(s.customerId, s.score);
+                latestPerCustomer.set(s.customerId, s.score ?? 0);
             }
         }
 
