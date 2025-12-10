@@ -3,13 +3,12 @@ import { db } from '@/lib/db';
 import { verifyJwt } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { ContactType, POutcome } from '@prisma/client';
 
 // Skema validasi untuk log panggilan baru
 const logCampaignSchema = z.object({
     customerId: z.string().cuid("ID Customer tidak valid"),
-    contact: z.nativeEnum(ContactType),
-    poutcome: z.nativeEnum(POutcome),
+    contact: z.string(),
+    poutcome: z.string(),
 });
 
 export async function POST(request: NextRequest) {
