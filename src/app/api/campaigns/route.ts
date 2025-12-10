@@ -4,26 +4,31 @@ import { verifyJwt } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 
-// Skema validasi untuk log panggilan baru
+// Enums lokal agar tidak bergantung ke Prisma
+const ContactTypeEnum = z.enum(['cellular', 'telephone', 'unknown']);
+const POutcomeEnum = z.enum(['success', 'failure', 'nonexistent', 'unknown']);
+
 const logCampaignSchema = z.object({
     customerId: z.string().cuid("ID Customer tidak valid"),
-    contact: z.string(),
-    poutcome: z.string(),
+    contact: ContactTypeEnum,
+    poutcome: POutcomeEnum,
 });
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. Dapatkan ID Sales (User) dari token
-        const token = cookies().get('token')?.value;
+        // 1️⃣ Dapatkan ID Sales (User) dari cookie JWT
+        const cookieStore = await cookies();
+        const token = cookieStore.get('token')?.value;
+
         const payload = token ? await verifyJwt(token) : null;
 
         if (!payload || !payload.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        // Ini adalah ID Sales yang sedang login
+
         const userId = payload.id as string;
 
-        // 2. Validasi body
+        // 2️⃣ Validasi body input
         const body = await request.json();
         const validation = logCampaignSchema.safeParse(body);
 
@@ -33,52 +38,49 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+
         const { customerId, contact, poutcome } = validation.data;
 
-        // 3. Dapatkan data 'campaign' sebelumnya (jika ada) untuk customer ini
+        // 3️⃣ Ambil campaign terakhir untuk customer ini
         const lastCampaign = await db.campaign.findFirst({
-            where: { customerId: customerId },
+            where: { customerId },
             orderBy: { createdAt: 'desc' },
         });
 
-        // 4. Siapkan data hari, bulan, dan hitungan kampanye
+        // 4️⃣ Hitung detail tambahan
         const now = new Date();
-        // 'en-US' untuk format standar (bisa diganti 'id-ID' jika mau Bahasa Indonesia)
-        const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' }); // "Monday"
-        const month = now.toLocaleString('en-US', { month: 'short' }).toLowerCase(); // "nov"
+        const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' });
+        const month = now.toLocaleString('en-US', { month: 'short' }).toLowerCase();
 
-        let pdays = 999; // 999 = belum pernah dihubungi
+        let pdays = 999;
         let previous = 0;
 
         if (lastCampaign) {
-            // 'previous' adalah jumlah total kontak dari 'log' sebelumnya
             previous = lastCampaign.campaign;
-            // Hitung selisih hari sejak kontak terakhir
             const diffTime = Math.abs(now.getTime() - lastCampaign.createdAt.getTime());
             pdays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
 
-        // 5. Buat data Campaign (log panggilan) baru
+        // 5️⃣ Simpan campaign baru
         const newCampaignLog = await db.campaign.create({
             data: {
-                customerId: customerId,
-                userId: userId, // <-- Simpan siapa sales-nya
-                contact: contact,
+                customerId,
+                userId,
+                contact,
                 day_of_week: dayOfWeek,
-                month: month,
-                campaign: 1, // Ini adalah kontak ke-1 untuk 'log' ini
-                previous: previous,
-                pdays: pdays,
-                poutcome: poutcome,
+                month,
+                campaign: 1,
+                previous,
+                pdays,
+                poutcome,
             },
         });
 
-        // 6. Kirim balikan sukses
+        // 6️⃣ Response sukses
         return NextResponse.json(
             { message: 'Panggilan berhasil dicatat', log: newCampaignLog },
-            { status: 201 } // 201 Created
+            { status: 201 }
         );
-
     } catch (error) {
         console.error('[API_CAMPAIGNS_POST_ERROR]', error);
         return NextResponse.json(
@@ -87,4 +89,3 @@ export async function POST(request: NextRequest) {
         );
     }
 }
-
