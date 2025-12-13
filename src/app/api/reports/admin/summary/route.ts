@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             },
             { status: 200 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[API_ADMIN_SUMMARY_ERROR]", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }

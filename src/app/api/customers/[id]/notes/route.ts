@@ -58,7 +58,7 @@ export async function POST(
             { message: "Catatan berhasil ditambahkan", note: newNote },
             { status: 201 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[API_ADD_NOTE_ERROR]", {
             name: error.name,
             message: error.message,

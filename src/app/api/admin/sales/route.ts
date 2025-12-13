@@ -18,7 +18,7 @@ export async function GET() {
         });
 
         return NextResponse.json({ sales }, { status: 200 });
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[GET_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal mengambil data sales" },
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
             { message: "Sales berhasil ditambahkan", id: newId },
             { status: 201 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[POST_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal menambah sales" },
@@ -137,7 +137,7 @@ export async function PUT(req: Request) {
             { message: `Sales ${id} berhasil diperbarui` },
             { status: 200 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[PUT_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal memperbarui sales" },
@@ -172,7 +172,7 @@ export async function DELETE(req: Request) {
             { message: `Sales ${id} berhasil dihapus` },
             { status: 200 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[DELETE_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal menghapus sales" },

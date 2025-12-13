@@ -80,7 +80,7 @@ export async function POST(
             },
             { status: 201 }
         );
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("[API_CUSTOMER_CALL_ERROR]", {
             name: error.name,
             message: error.message,
