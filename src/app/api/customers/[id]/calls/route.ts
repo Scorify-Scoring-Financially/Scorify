@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { verifyJwt } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import { CallResult } from "@prisma/client"; // ✅ hanya CallResult, tanpa FinalDecision
+import { CallResult } from "@prisma/client";
 
 export async function POST(
     request: NextRequest,
@@ -102,6 +102,7 @@ export async function POST(
             { status: 201 }
         );
     } catch (error: unknown) {
+        console.error("[CALLS_API_ERROR]", error);
         if (error instanceof PrismaClientKnownRequestError) {
             if (error.code === "P2023") {
                 return NextResponse.json(

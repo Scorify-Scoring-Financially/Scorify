@@ -172,13 +172,6 @@ export default function LoginPage() {
                 <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
               )}
 
-              {/* Lupa Password */}
-              <p className="text-right mt-1 text-sm">
-                <a href="#" className="text-[#00A884] hover:underline">
-                  Lupa password?
-                </a>
-              </p>
-
             </div>
 
             {/* LOGIN BUTTON */}

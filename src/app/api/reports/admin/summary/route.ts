@@ -8,14 +8,12 @@ const MONTHS: string[] = [
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
 
-// Konversi nilai skor ke kategori
 function toScoreBand(score: number): "high" | "medium" | "low" {
     if (score >= 0.8) return "high";
     if (score >= 0.6) return "medium";
     return "low";
 }
 
-// Buat filter tanggal per tahun
 function toYearRange(year?: number): Prisma.DateTimeFilter | undefined {
     if (!year) return undefined;
     return {
@@ -34,9 +32,7 @@ export async function GET(request: NextRequest) {
         const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
         const yearRange = toYearRange(year);
 
-        // ===============================================
-        // 1️⃣ Ambil data campaign dari tahun yang dipilih
-        // ===============================================
+
         const where: Prisma.CampaignWhereInput = {
             ...(yearRange ? { createdAt: yearRange } : {}),
         };
@@ -45,14 +41,11 @@ export async function GET(request: NextRequest) {
             where.userId = salesId;
         }
 
-        // Tambahkan filter status (agreed / declined / pending)
         if (statusParam !== "all") {
             where.finalDecision = statusParam as "agreed" | "declined" | "pending";
         }
 
-        // ===============================================
-        // 2️⃣ Query data campaign bulan ini & sebelumnya
-        // ===============================================
+
         const now = new Date();
         const thisMonthRange = { gte: startOfMonth(now), lt: endOfMonth(now) };
         const prevMonthRange = {
@@ -91,9 +84,7 @@ export async function GET(request: NextRequest) {
             }),
         ]);
 
-        // ===============================================
-        // 3️⃣ Hitung summary bulan ini
-        // ===============================================
+
         const distinctCustomerIds = new Set(thisMonthCampaigns.map((c) => c.customerId));
         const totalCustomers = distinctCustomerIds.size;
 
@@ -105,9 +96,7 @@ export async function GET(request: NextRequest) {
             (c) => c.finalDecision && c.finalDecision !== "pending"
         ).length;
 
-        // ===============================================
-        // 4️⃣ Distribusi skor peluang
-        // ===============================================
+
         const latestScorePerCustomer = new Map<string, number>();
         thisMonthCampaigns
             .slice()
@@ -136,9 +125,7 @@ export async function GET(request: NextRequest) {
             low: low / denom,
         };
 
-        // ===============================================
-        // 5️⃣ Hitung growth dibanding bulan sebelumnya
-        // ===============================================
+
         const prevDistinct = new Set(prevMonthCampaigns.map((c) => c.customerId));
         const prevCustomers = prevDistinct.size;
 
@@ -158,17 +145,14 @@ export async function GET(request: NextRequest) {
             contacted: calcGrowth(contactedCustomers, prevContacted),
         };
 
-        // ===============================================
-        // ✅ Response ke frontend
-        // ===============================================
         return NextResponse.json(
             {
-                totalCustomers,
-                approvalRate,
-                contactedCustomers,
-                scoreDistribution,
+                totalCustomers: totalCustomers ?? 0,
+                approvalRate: approvalRate ?? 0,
+                contactedCustomers: contactedCustomers ?? 0,
+                scoreDistribution: scoreDistribution ?? { high: 0, medium: 0, low: 0 },
                 months: MONTHS,
-                growth,
+                growth: growth ?? { customers: 0, approvalRate: 0, contacted: 0 },
             },
             { status: 200 }
         );

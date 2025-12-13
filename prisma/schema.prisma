@@ -7,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-//  MODEL USER DAN AUTENTIKASI
-// ============================================
-
 model User {
   id                  String               @id @default(cuid()) @db.VarChar(255)
   email               String               @unique @db.VarChar(255)
@@ -20,8 +16,6 @@ model User {
   role                String               @default("Sales") @db.VarChar(50)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-
-  // Relasi
   createdCampaigns    Campaign[]
   interactionLogs     InteractionLog[]
   passwordResetTokens PasswordResetToken[]
@@ -38,10 +32,6 @@ model PasswordResetToken {
   @@index([userId])
 }
 
-// ============================================
-//  MODEL CUSTOMER
-// ============================================
-
 model Customer {
   id              String           @id @db.VarChar(255)
   name            String           @db.VarChar(255)
@@ -57,9 +47,7 @@ model Customer {
   housing         String           @default("unknown") @db.VarChar(20)
   loan            String           @default("unknown") @db.VarChar(20)
   createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  // Relasi
+  updatedAt       DateTime         @default(now()) @updatedAt
   campaigns       Campaign[]
   interactionLogs InteractionLog[]
   leadScores      LeadScore[]
@@ -69,42 +57,29 @@ model Customer {
   @@index([email])
 }
 
-// ============================================
-//  MODEL CAMPAIGN (dengan relasi finalDecision)
-// ============================================
-
 model Campaign {
-  id             String      @id @default(cuid()) @db.VarChar(255)
-  contact        String      @default("unknown") @db.VarChar(50)
-  day_of_week    String      @default("unknown") @db.VarChar(50)
-  month          String      @default("unknown") @db.VarChar(50)
-  campaign       Int
-  previous       Int
-  pdays          Int
-  poutcome       String      @default("unknown") @db.VarChar(50)
-  createdAt      DateTime    @default(now())
-
-  // Relasi utama
-  customerId     String      @db.VarChar(255)
-  userId         String?     @db.VarChar(255)
-  customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  // Tambahan dari schema baru (finalDecision)
-  finalDecision  FinalDecision?
-
-  // Relasi ke skor dan prediksi
-  leadScores     LeadScore[]
-  leadscore      leadscore[]
+  id            String        @id @default(cuid()) @db.VarChar(255)
+  contact       String        @default("unknown") @db.VarChar(50)
+  day_of_week   String        @default("unknown") @db.VarChar(50)
+  month         String        @default("unknown") @db.VarChar(50)
+  campaign      Int
+  previous      Int
+  pdays         Int
+  poutcome      String        @default("unknown") @db.VarChar(50)
+  customerId    String        @db.VarChar(255)
+  userId        String?       @db.VarChar(255)
+  createdAt     DateTime?     @default(dbgenerated("(now() AT TIME ZONE 'Asia/Jakarta'::text)")) @db.Timestamptz(6)
+  updatedAt     DateTime?     @default(dbgenerated("(now() AT TIME ZONE 'Asia/Jakarta'::text)")) @db.Timestamp(6)
+  finalDecision FinalDecision @default(pending)
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user          User?         @relation(fields: [userId], references: [id])
+  leadScores    LeadScore[]
+  leadscore     leadscore[]
 
   @@index([customerId])
   @@index([userId])
   @@index([month])
 }
-
-// ============================================
-//  MODEL MACRODATA
-// ============================================
 
 model MacroData {
   id             String   @id @db.VarChar(255)
@@ -117,10 +92,6 @@ model MacroData {
   createdAt      DateTime @default(now())
 }
 
-// ============================================
-//  MODEL LEADSCORE (modern)
-// ============================================
-
 model LeadScore {
   id            String    @id @default(cuid()) @db.VarChar
   customerId    String    @db.VarChar
@@ -131,7 +102,7 @@ model LeadScore {
   model_version String?   @db.VarChar
   batch_id      String?   @db.VarChar
   createdAt     DateTime? @db.Timestamp(6)
-
+  updatedAt     DateTime? @db.Timestamptz(6)
   campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: NoAction)
   customer      Customer  @relation(fields: [customerId], references: [id], onDelete: NoAction)
 
@@ -139,29 +110,20 @@ model LeadScore {
   @@index([id], map: "ix_LeadScore_id")
 }
 
-// ============================================
-//  MODEL INTERACTION LOG (pakai enum modern)
-// ============================================
-
 model InteractionLog {
-  id          String          @id @default(cuid()) @db.VarChar(255)
-  type        InteractionType @default(CATATAN_INTERNAL)
-  note        String
-  createdAt   DateTime        @default(now())
-  customerId  String          @db.VarChar(255)
-  userId      String?         @db.VarChar(255)
-  callResult  CallResult?     @default(unknown)
-
-  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id         String          @id @default(cuid()) @db.VarChar(255)
+  type       InteractionType @default(CATATAN_INTERNAL)
+  note       String
+  createdAt  DateTime        @default(now())
+  customerId String          @db.VarChar(255)
+  userId     String?         @db.VarChar(255)
+  callResult CallResult?     @default(unknown)
+  customer   Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User?           @relation(fields: [userId], references: [id])
 
   @@index([customerId])
   @@index([userId])
 }
-
-// ============================================
-//  MODEL LEADSCORE (lama, tetap dipertahankan)
-// ============================================
 
 model leadscore {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -173,10 +135,6 @@ model leadscore {
   Campaign    Campaign  @relation(fields: [campaignid], references: [id], onDelete: NoAction, map: "fk_campaign")
   Customer    Customer  @relation(fields: [customerid], references: [id], onDelete: NoAction, map: "fk_customer")
 }
-
-// ============================================
-//  ENUMS MODERN (khusus Interaction dan Campaign)
-// ============================================
 
 enum FinalDecision {
   agreed
