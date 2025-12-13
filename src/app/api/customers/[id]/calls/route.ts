@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { verifyJwt } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import { CallResult } from "@prisma/client"; // ✅ tambahan import enum
+import { CallResult, FinalDecision } from "@prisma/client"; // ✅ tambahan import enum
 
 export async function POST(
     request: NextRequest,
@@ -77,10 +77,17 @@ export async function POST(
             });
 
             if (latestCampaign) {
+                // ✅ Normalisasi nilai statusPenawaran agar sesuai enum FinalDecision
+                let safeFinalDecision: FinalDecision | null | undefined = undefined;
+                const normalizedStatus = statusPenawaran.trim().toLowerCase();
+                if (normalizedStatus === "agreed") safeFinalDecision = "agreed";
+                else if (normalizedStatus === "declined") safeFinalDecision = "declined";
+                else if (normalizedStatus === "pending") safeFinalDecision = "pending";
+
                 await db.campaign.update({
                     where: { id: latestCampaign.id },
                     data: {
-                        finalDecision: statusPenawaran,
+                        finalDecision: safeFinalDecision, // ✅ gunakan nilai aman
                         userId,
                     },
                 });
