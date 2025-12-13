@@ -74,7 +74,7 @@ model Customer {
 // ============================================
 
 model Campaign {
-  id             String      @id @db.VarChar(255)
+  id             String      @id @default(cuid()) @db.VarChar(255)
   contact        String      @default("unknown") @db.VarChar(50)
   day_of_week    String      @default("unknown") @db.VarChar(50)
   month          String      @default("unknown") @db.VarChar(50)

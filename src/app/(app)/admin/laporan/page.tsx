@@ -44,7 +44,7 @@ export default function LaporanAdminPage() {
   // --- Filter Sales dan Tahun ---
   const [salesList, setSalesList] = useState<SalesUser[]>([]);
   const [selectedSales, setSelectedSales] = useState<string>("all");
-  const [selectedYear] = useState<number>(new Date().getFullYear());  
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   // --- Data utama ---
   const [totalCustomers, setTotalCustomers] = useState<number>(0);
@@ -215,6 +215,22 @@ export default function LaporanAdminPage() {
               ))}
             </select>
 
+            {/* Filter Tahun */}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
+            >
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                );
+              })}
+            </select>
+
             {/* Filter Status */}
             <select
               value={status}
@@ -302,6 +318,25 @@ export default function LaporanAdminPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex flex-row gap-6 justify-center">
+              {donutData.map((d, i) => (
+                <div
+                  className="flex items-center gap-3"
+                  key={`legend-${i}`}
+                >
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      background: DONUT_COLORS[i % DONUT_COLORS.length],
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">{d.name}</p>
+                    <p className="text-sm text-gray-500">{d.value}%</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

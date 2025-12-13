@@ -14,7 +14,7 @@ export async function POST(
         const { note } = body as { note?: string };
 
         // Ambil token user dari cookies
-        const cookieStore = cookies();
+        const cookieStore = await cookies();
         const token = cookieStore.get("token");
 
         if (!token) {

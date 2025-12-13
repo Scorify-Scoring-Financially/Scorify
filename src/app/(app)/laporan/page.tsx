@@ -287,6 +287,12 @@ export default function LaporanSalesPage() {
                       />
                     ))}
                   </Pie>
+                  <Tooltip
+                    formatter={(value: number | string, name: string) => [
+                      `${value}%`,
+                      name,
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
