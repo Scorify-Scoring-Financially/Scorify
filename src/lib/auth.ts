@@ -43,3 +43,5 @@ export async function verifyJwt(token: string): Promise<JWTPayload | null> {
         return null; // jika invalid / expired
     }
 }
+
+export type { JWTPayload as JwtPayload };
