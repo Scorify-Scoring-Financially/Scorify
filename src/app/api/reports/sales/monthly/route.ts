@@ -3,13 +3,13 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// Label 12 bulan (Jan–Des) untuk output
+
 const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
 
-// Normalisasi nama bulan string → index 0..11
+
 const MONTH_INDEX: Record<string, number> = {
     jan: 0, january: 0,
     feb: 1, february: 1,
@@ -25,21 +25,20 @@ const MONTH_INDEX: Record<string, number> = {
     dec: 11, des: 11, december: 11, desember: 11,
 };
 
-// Konversi string bulan → index
+
 function monthIndexFromString(m?: string | null): number | null {
     if (!m) return null;
     const key = m.trim().toLowerCase();
     return key in MONTH_INDEX ? MONTH_INDEX[key] : null;
 }
 
-// JWT Payload Type
+
 interface JwtPayload {
     id: string;
     role?: string;
     [key: string]: unknown;
 }
 
-// Struktur data untuk hasil per bulan
 interface MonthlyBucket {
     month: string;
     setuju: number;
@@ -93,8 +92,8 @@ export async function GET(request: NextRequest) {
             where: whereBase,
             select: {
                 createdAt: true,
-                finalDecision: true, // agreed | declined | pending | null
-                month: true, // string bulan dari dataset — pakai ini kalau ada
+                finalDecision: true,
+                month: true,
             },
         });
 
@@ -108,11 +107,10 @@ export async function GET(request: NextRequest) {
 
         // --- Hitung jumlah per bulan
         for (const c of campaigns) {
-            // Prioritaskan field `month` (string). Jika tidak valid, fallback ke createdAt.
             let monthIdx = monthIndexFromString(c.month);
             if (monthIdx === null) {
                 // fallback ke createdAt
-                monthIdx = c.createdAt.getMonth(); // 0..11 (lokal)
+                monthIdx = c.createdAt.getMonth();
             }
 
             // Normalisasi status
@@ -131,8 +129,16 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json(filtered, { status: 200 });
-    } catch (error: any) {
-        console.error("[API_REPORT_MONTHLY_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[API_REPORT_MONTHLY_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[API_REPORT_MONTHLY_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

@@ -4,7 +4,6 @@ import { verifyJwt } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
-
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -12,10 +11,14 @@ export async function POST(
     try {
         const { id } = await context.params;
         const body = await request.json();
-        const { note, callResult, statusPenawaran } = body;
+        const { note, callResult, statusPenawaran } = body as {
+            note?: string;
+            callResult?: string;
+            statusPenawaran?: string;
+        };
 
         // Ambil token dari cookie
-        const cookieStore = await cookies();
+        const cookieStore = cookies();
         const token = cookieStore.get("token");
 
         if (!token) {
@@ -27,7 +30,7 @@ export async function POST(
 
         // Verifikasi token JWT
         const payload = await verifyJwt(token.value);
-        if (!payload || !("id" in payload)) {
+        if (!payload || typeof payload !== "object" || !("id" in payload)) {
             return NextResponse.json(
                 { error: "Unauthorized: Invalid token" },
                 { status: 401 }
@@ -36,7 +39,7 @@ export async function POST(
 
         const userId = payload.id as string;
 
-        //  Validasi input
+        // Validasi input
         if (!id || !note) {
             return NextResponse.json(
                 { error: "Data tidak lengkap" },
@@ -44,14 +47,14 @@ export async function POST(
             );
         }
 
-        //  Simpan log panggilan ke InteractionLog
+        // Simpan log panggilan ke InteractionLog
         const log = await db.interactionLog.create({
             data: {
                 type: "PANGGILAN_TELEPON",
                 note: note.trim(),
                 callResult,
                 customerId: id,
-                userId, // ⬅️ ID user dari JWT
+                userId,
             },
         });
 
@@ -67,7 +70,7 @@ export async function POST(
                     where: { id: latestCampaign.id },
                     data: {
                         finalDecision: statusPenawaran,
-                        userId, // ⬅ simpan siapa sales yang terakhir update campaign
+                        userId,
                     },
                 });
             }
@@ -80,32 +83,28 @@ export async function POST(
             },
             { status: 201 }
         );
-    } catch (error: any) {
-        console.error("[API_CUSTOMER_CALL_ERROR]", {
-            name: error.name,
-            message: error.message,
-            code: error.code,
-        });
+    } catch (error: unknown) {
+        if (error instanceof PrismaClientKnownRequestError) {
+            if (error.code === "P2023") {
+                return NextResponse.json(
+                    { error: "Invalid Customer ID format" },
+                    { status: 400 }
+                );
+            }
+        }
 
-        if (
-            error instanceof PrismaClientKnownRequestError &&
-            error.code === "P2023"
-        ) {
-            return NextResponse.json(
-                { error: "Invalid Customer ID format" },
-                { status: 400 }
-            );
+        if (error instanceof Error) {
+            console.error("[API_CUSTOMER_CALL_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[API_CUSTOMER_CALL_ERROR]", error);
         }
 
         return NextResponse.json(
             {
                 error: "Terjadi kesalahan pada server",
-                debug: {
-                    name: error?.name,
-                    message: error?.message,
-                    code: error?.code,
-                    stack: error?.stack,
-                },
             },
             { status: 500 }
         );

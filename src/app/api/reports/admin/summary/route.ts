@@ -172,8 +172,19 @@ export async function GET(request: NextRequest) {
             },
             { status: 200 }
         );
-    } catch (error: any) {
-        console.error("[API_ADMIN_SUMMARY_ERROR]", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[API_ADMIN_SUMMARY_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[API_ADMIN_SUMMARY_ERROR]", error);
+        }
+
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
     }
 }

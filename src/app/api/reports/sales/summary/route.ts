@@ -9,7 +9,6 @@ const MONTHS_ID: string[] = [
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
 
-// ✅ Definisikan tipe aman untuk JWT payload
 interface JwtPayload {
     id: string;
     [key: string]: unknown;
@@ -18,7 +17,7 @@ interface JwtPayload {
 export async function GET(request: NextRequest) {
     try {
         // --- Auth: ambil user dari JWT cookie
-        const cookieStore = await cookies();
+        const cookieStore = cookies();
         const token = cookieStore.get("token");
 
         if (!token) {
@@ -44,10 +43,7 @@ export async function GET(request: NextRequest) {
 
         // --- Ambil semua campaign milik user pada tahun tsb
         const campaigns = await db.campaign.findMany({
-            where: {
-                userId,
-                createdAt: { gte, lt },
-            },
+            where: { userId, createdAt: { gte, lt } },
             select: {
                 id: true,
                 customerId: true,
@@ -109,7 +105,6 @@ export async function GET(request: NextRequest) {
             low: low / totalScored,
         };
 
-        // ✅ Kirim hasil JSON
         return NextResponse.json(
             {
                 totalCustomers,
@@ -121,8 +116,16 @@ export async function GET(request: NextRequest) {
             },
             { status: 200 }
         );
-    } catch (error: any) {
-        console.error("[API_REPORT_SUMMARY_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[API_REPORT_SUMMARY_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[API_REPORT_SUMMARY_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

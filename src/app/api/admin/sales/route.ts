@@ -18,8 +18,16 @@ export async function GET() {
         });
 
         return NextResponse.json({ sales }, { status: 200 });
-    } catch (error: any) {
-        console.error("[GET_SALES_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[GET_SALES_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[GET_SALES_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Gagal mengambil data sales" },
             { status: 500 }
@@ -87,8 +95,16 @@ export async function POST(req: Request) {
             { message: "Sales berhasil ditambahkan", id: newId },
             { status: 201 }
         );
-    } catch (error: any) {
-        console.error("[POST_SALES_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[POST_SALES_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[POST_SALES_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Gagal menambah sales" },
             { status: 500 }
@@ -137,8 +153,16 @@ export async function PUT(req: Request) {
             { message: `Sales ${id} berhasil diperbarui` },
             { status: 200 }
         );
-    } catch (error: any) {
-        console.error("[PUT_SALES_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[PUT_SALES_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[PUT_SALES_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Gagal memperbarui sales" },
             { status: 500 }
@@ -172,8 +196,16 @@ export async function DELETE(req: Request) {
             { message: `Sales ${id} berhasil dihapus` },
             { status: 200 }
         );
-    } catch (error: any) {
-        console.error("[DELETE_SALES_ERROR]", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("[DELETE_SALES_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[DELETE_SALES_ERROR]", error);
+        }
+
         return NextResponse.json(
             { error: "Gagal menghapus sales" },
             { status: 500 }

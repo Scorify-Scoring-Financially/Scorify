@@ -11,10 +11,10 @@ export async function POST(
     try {
         const { id } = await context.params;
         const body = await request.json();
-        const { note } = body;
+        const { note } = body as { note?: string };
 
-        //  Ambil token user dari cookies
-        const cookieStore = await cookies();
+        // Ambil token user dari cookies
+        const cookieStore = cookies();
         const token = cookieStore.get("token");
 
         if (!token) {
@@ -24,9 +24,9 @@ export async function POST(
             );
         }
 
-        //  Verifikasi JWT dan ambil ID user
+        // Verifikasi JWT dan ambil ID user
         const payload = await verifyJwt(token.value);
-        if (!payload || !("id" in payload)) {
+        if (!payload || typeof payload !== "object" || !("id" in payload)) {
             return NextResponse.json(
                 { error: "Unauthorized: Invalid token" },
                 { status: 401 }
@@ -35,7 +35,7 @@ export async function POST(
 
         const userId = payload.id as string;
 
-        //  Validasi input
+        // Validasi input
         if (!id || !note) {
             return NextResponse.json(
                 { error: "Customer ID dan catatan wajib diisi" },
@@ -50,7 +50,7 @@ export async function POST(
                 note: note.trim(),
                 customerId: id,
                 callResult: "unknown",
-                userId, //  ID user dari JWT (sales/admin yang login)
+                userId, // ID user dari JWT (sales/admin yang login)
             },
         });
 
@@ -58,33 +58,25 @@ export async function POST(
             { message: "Catatan berhasil ditambahkan", note: newNote },
             { status: 201 }
         );
-    } catch (error: any) {
-        console.error("[API_ADD_NOTE_ERROR]", {
-            name: error.name,
-            message: error.message,
-            code: error.code,
-        });
-
-        if (
-            error instanceof PrismaClientKnownRequestError &&
-            error.code === "P2023"
-        ) {
+    } catch (error: unknown) {
+        if (error instanceof PrismaClientKnownRequestError && error.code === "P2023") {
             return NextResponse.json(
                 { error: "Invalid Customer ID format" },
                 { status: 400 }
             );
         }
 
+        if (error instanceof Error) {
+            console.error("[API_ADD_NOTE_ERROR]", {
+                name: error.name,
+                message: error.message,
+            });
+        } else {
+            console.error("[API_ADD_NOTE_ERROR]", error);
+        }
+
         return NextResponse.json(
-            {
-                error: "Terjadi kesalahan pada server",
-                debug: {
-                    name: error?.name,
-                    message: error?.message,
-                    code: error?.code,
-                    stack: error?.stack,
-                },
-            },
+            { error: "Terjadi kesalahan pada server" },
             { status: 500 }
         );
     }
