@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import {
   PieChart,
@@ -39,22 +39,30 @@ const ACCENT = "#00A884";
 export default function LaporanAdminPage() {
   // --- State untuk filter ---
   const [kategori, setKategori] = useState<string>("all");
-  const [applied, setApplied] = useState(false);
+  const [status, setStatus] = useState<"all" | "agreed" | "declined" | "pending">("all");
 
   // --- Filter Sales dan Tahun ---
   const [salesList, setSalesList] = useState<SalesUser[]>([]);
   const [selectedSales, setSelectedSales] = useState<string>("all");
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear] = useState<number>(new Date().getFullYear());  
 
   // --- Data utama ---
   const [totalCustomers, setTotalCustomers] = useState<number>(0);
   const [approvalRate, setApprovalRate] = useState<number>(0);
   const [contactedCustomers, setContactedCustomers] = useState<number>(0);
-  const [scoreDistribution, setScoreDistribution] = useState({ high: 0, medium: 0, low: 0 });
+  const [scoreDistribution, setScoreDistribution] = useState({
+    high: 0,
+    medium: 0,
+    low: 0,
+  });
   const [monthlyBars, setMonthlyBars] = useState<MonthlyBar[]>([]);
-  const [growth, setGrowth] = useState({ customers: 0, approvalRate: 0, contacted: 0 });
+  const [growth, setGrowth] = useState({
+    customers: 0,
+    approvalRate: 0,
+    contacted: 0,
+  });
 
-  // --- Load Sales ---
+  // --- Load Sales List ---
   useEffect(() => {
     const loadSales = async () => {
       try {
@@ -68,11 +76,12 @@ export default function LaporanAdminPage() {
     loadSales();
   }, []);
 
-  // --- Load summary dan monthly dari API ---
-  const fetchSummaryAndMonthly = async () => {
+  // --- Ambil data summary & monthly dari API ---
+  const fetchSummaryAndMonthly = useCallback(async () => {
     const params = new URLSearchParams();
     if (selectedSales !== "all") params.set("salesId", selectedSales);
     if (selectedYear) params.set("year", String(selectedYear));
+    if (status && status !== "all") params.set("status", status);
 
     const [summaryRes, monthlyRes] = await Promise.all([
       fetch(`/api/reports/admin/summary?${params.toString()}`, { cache: "no-store" }),
@@ -90,23 +99,15 @@ export default function LaporanAdminPage() {
     setScoreDistribution({ high, medium, low });
     setGrowth(summary.growth || { customers: 0, approvalRate: 0, contacted: 0 });
     setMonthlyBars(monthly.data || []);
-  };
+  }, [selectedSales, selectedYear, status]);
 
   useEffect(() => {
     fetchSummaryAndMonthly().catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSales, selectedYear]);
+  }, [fetchSummaryAndMonthly]);
 
-  const handleApplyFilter = () => {
-    setApplied(true);
-    fetchSummaryAndMonthly().catch(console.error);
-  };
-
-  // --- Donut Data ---
+  // --- Donut Chart Data ---
   const donutData = useMemo(() => {
     let { high, medium, low } = scoreDistribution;
-
-    // Pastikan total > 0 agar tetap tampil
     const total = high + medium + low;
     if (total === 0) {
       high = 0.33;
@@ -114,30 +115,60 @@ export default function LaporanAdminPage() {
       low = 0.34;
     }
 
+    if (kategori === "tinggi") {
+      return [
+        { name: "Skor Tinggi", value: Math.round(high * 100) },
+        { name: "Lainnya", value: Math.max(0, 100 - Math.round(high * 100)) },
+      ];
+    } else if (kategori === "sedang") {
+      return [
+        { name: "Skor Sedang", value: Math.round(medium * 100) },
+        { name: "Lainnya", value: Math.max(0, 100 - Math.round(medium * 100)) },
+      ];
+    } else if (kategori === "rendah") {
+      return [
+        { name: "Skor Rendah", value: Math.round(low * 100) },
+        { name: "Lainnya", value: Math.max(0, 100 - Math.round(low * 100)) },
+      ];
+    }
+
     return [
       { name: "Skor Tinggi", value: Math.round(high * 100) },
       { name: "Skor Sedang", value: Math.round(medium * 100) },
       { name: "Skor Rendah", value: Math.round(low * 100) },
     ];
-  }, [scoreDistribution]);
+  }, [kategori, scoreDistribution]);
 
-  const DONUT_COLORS = ["#00A884", "#F2C94C", "#F05A47"];
+  // --- Warna Donut Dinamis ---
+  const DONUT_COLORS = useMemo(() => {
+    if (donutData.length === 3) return ["#00A884", "#F2C94C", "#F05A47"];
+
+    const primary = donutData[0]?.name || "Lainnya";
+    const gray = "#E5E7EB";
+
+    if (primary === "Skor Tinggi") return ["#00A884", gray];
+    if (primary === "Skor Sedang") return ["#F2C94C", gray];
+    if (primary === "Skor Rendah") return ["#F05A47", gray];
+    return [gray, gray];
+  }, [donutData]);
+
   const formatPercent = (n: number) => `${Math.round(n * 100)}%`;
 
   // --- Download CSV ---
   const handleDownloadCSV = () => {
-    const rows = monthlyBars.map((m) => `${m.month},${m.setuju},${m.ditolak},${m.tertunda}`).join("\n");
+    const rows = monthlyBars
+      .map((m) => `${m.month},${m.setuju},${m.ditolak},${m.tertunda}`)
+      .join("\n");
     const csv = `bulan,setuju,ditolak,tertunda\n${rows}`;
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "laporan-admin.csv";
+    a.download = `laporan-admin-${selectedYear}-${status}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // --- Utility untuk warna growth ---
   const GrowthText = ({ value }: { value: number }) => (
     <span className={`text-sm ${value >= 0 ? "text-green-600" : "text-red-500"} self-end`}>
       {value >= 0 ? "+" : ""}
@@ -154,9 +185,12 @@ export default function LaporanAdminPage() {
           <h1 className="text-2xl font-bold text-gray-800 mb-3">Laporan Admin</h1>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Filter Kategori */}
             <select
               value={kategori}
-              onChange={(e) => setKategori(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setKategori(e.target.value)
+              }
               className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
             >
               <option value="all">Semua Kategori</option>
@@ -165,9 +199,12 @@ export default function LaporanAdminPage() {
               <option value="rendah">Skor Rendah</option>
             </select>
 
+            {/* Filter Sales */}
             <select
               value={selectedSales}
-              onChange={(e) => setSelectedSales(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSelectedSales(e.target.value)
+              }
               className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
             >
               <option value="all">Semua Sales</option>
@@ -178,15 +215,21 @@ export default function LaporanAdminPage() {
               ))}
             </select>
 
-            <button
-              onClick={handleApplyFilter}
-              className="flex items-center gap-2 rounded-md px-2.5 py-1.5 border border-[var(--color-accent,#00A884)]
-                         text-[var(--color-accent,#00A884)] font-semibold text-xs bg-white 
-                         transition hover:bg-[var(--color-accent,#00A884)] hover:text-white"
+            {/* Filter Status */}
+            <select
+              value={status}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setStatus(e.target.value as "all" | "agreed" | "declined" | "pending")
+              }
+              className="px-2.5 py-1.5 rounded-md border border-gray-300 outline-none text-xs"
             >
-              Terapkan Filter
-            </button>
+              <option value="all">Semua Status</option>
+              <option value="agreed">Setuju</option>
+              <option value="declined">Ditolak</option>
+              <option value="pending">Tertunda</option>
+            </select>
 
+            {/* Tombol Unduh */}
             <button
               onClick={handleDownloadCSV}
               className="flex items-center gap-1.5 rounded-md px-2.5 py-1 bg-[var(--color-accent)] text-white text-xs font-semibold shadow transition hover:bg-[#009970]"
@@ -197,7 +240,7 @@ export default function LaporanAdminPage() {
           </div>
         </div>
 
-        {/* Statistik Utama */}
+        {/* Statistik */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Total Nasabah</p>
@@ -218,7 +261,9 @@ export default function LaporanAdminPage() {
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
             <p className="text-sm text-gray-500">Jumlah Nasabah Dihubungi</p>
             <div className="flex items-baseline gap-4">
-              <h2 className="text-3xl font-extrabold">{contactedCustomers.toLocaleString()}</h2>
+              <h2 className="text-3xl font-extrabold">
+                {contactedCustomers.toLocaleString()}
+              </h2>
               <GrowthText value={growth.contacted} />
             </div>
           </div>
@@ -243,22 +288,20 @@ export default function LaporanAdminPage() {
                     endAngle={-270}
                   >
                     {donutData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={DONUT_COLORS[index % DONUT_COLORS.length]}
+                      />
                     ))}
                   </Pie>
+                  <Tooltip
+                    formatter={(value: number | string, name: string) => [
+                      `${value}%`,
+                      name,
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-            <div className="mt-4 flex flex-row gap-6 justify-center">
-              {donutData.map((d, i) => (
-                <div className="flex items-center gap-3" key={`legend-${i}`}>
-                  <div className="w-3 h-3 rounded-full" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                  <div>
-                    <p className="text-sm font-medium">{d.name}</p>
-                    <p className="text-sm text-gray-500">{d.value}%</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -269,10 +312,14 @@ export default function LaporanAdminPage() {
               <ResponsiveContainer>
                 <BarChart data={monthlyBars}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" interval={0} tick={{ fontSize: 12, fill: "#4B5563" }} />
+                  <XAxis
+                    dataKey="month"
+                    interval={0}
+                    tick={{ fontSize: 12, fill: "#4B5563" }}
+                  />
                   <YAxis />
                   <Tooltip />
-                  <Legend layout="horizontal" verticalAlign="bottom" wrapperStyle={{ textAlign: "center", width: "100%" }} />
+                  <Legend layout="horizontal" verticalAlign="bottom" />
                   <Bar dataKey="setuju" stackId="a" name="Setuju" fill={ACCENT} />
                   <Bar dataKey="ditolak" stackId="a" name="Ditolak" fill="#F05A47" />
                   <Bar dataKey="tertunda" stackId="a" name="Tertunda" fill="#F2C94C" />
@@ -281,8 +328,6 @@ export default function LaporanAdminPage() {
             </div>
           </div>
         </div>
-
-        <div className="text-sm text-gray-500">{applied ? "Filter diterapkan" : "Tidak ada filter aktif"}</div>
       </main>
     </div>
   );

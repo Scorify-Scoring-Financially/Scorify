@@ -3,34 +3,67 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// 12 nama bulan (Jan–Des)
-const MONTHS_ID = [
+// Label 12 bulan (Jan–Des) untuk output
+const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
 
-// ✅ Definisikan tipe payload dari JWT
+// Normalisasi nama bulan string → index 0..11
+const MONTH_INDEX: Record<string, number> = {
+    jan: 0, january: 0,
+    feb: 1, february: 1,
+    mar: 2, march: 2,
+    apr: 3, april: 3,
+    may: 4, mei: 4,
+    jun: 5, june: 5,
+    jul: 6, july: 6,
+    aug: 7, agu: 7, agus: 7, august: 7, agustus: 7,
+    sep: 8, sept: 8, september: 8,
+    oct: 9, okt: 9, october: 9, oktober: 9,
+    nov: 10, november: 10,
+    dec: 11, des: 11, december: 11, desember: 11,
+};
+
+// Konversi string bulan → index
+function monthIndexFromString(m?: string | null): number | null {
+    if (!m) return null;
+    const key = m.trim().toLowerCase();
+    return key in MONTH_INDEX ? MONTH_INDEX[key] : null;
+}
+
+// JWT Payload Type
 interface JwtPayload {
     id: string;
+    role?: string;
     [key: string]: unknown;
 }
 
+// Struktur data untuk hasil per bulan
+interface MonthlyBucket {
+    month: string;
+    setuju: number;
+    ditolak: number;
+    tertunda: number;
+}
+
+// GET /api/reports/sales/monthly?year=2025&status=all|agreed|declined|pending[&sales=<userId>]
 export async function GET(request: NextRequest) {
     try {
         // --- Auth
         const cookieStore = await cookies();
         const token = cookieStore.get("token");
-
         if (!token) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const payload = (await verifyJwt(token.value)) as JwtPayload | null;
-        const userId = payload?.id;
-
-        if (!userId) {
+        if (!payload?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const userId = payload.id;
+        const role = (payload.role ?? "").toString();
 
         // --- Params
         const { searchParams } = request.nextUrl;
@@ -39,21 +72,34 @@ export async function GET(request: NextRequest) {
             10
         );
         const status = (searchParams.get("status") || "all").toLowerCase(); // all | agreed | declined | pending
+        const salesParam = searchParams.get("sales") || ""; // khusus admin: filter ke sales tertentu
 
         const gte = new Date(year, 0, 1);
         const lt = new Date(year + 1, 0, 1);
 
-        // --- Query kampanye milik sales
+        // --- Build where untuk hak akses
+        const whereBase: Record<string, unknown> = {
+            createdAt: { gte, lt },
+        };
+
+        if (role === "Sales") {
+            whereBase.userId = userId;
+        } else if (role === "Admin" && salesParam) {
+            whereBase.userId = salesParam;
+        }
+
+        // --- Query campaign dengan field yang diperlukan
         const campaigns = await db.campaign.findMany({
-            where: {
-                userId,
-                createdAt: { gte, lt },
+            where: whereBase,
+            select: {
+                createdAt: true,
+                finalDecision: true, // agreed | declined | pending | null
+                month: true, // string bulan dari dataset — pakai ini kalau ada
             },
-            select: { createdAt: true, finalDecision: true },
         });
 
-        // --- Inisialisasi 12 bulan
-        const buckets = Array.from({ length: 12 }, (_, i) => ({
+        // --- Inisialisasi 12 bucket bulan
+        const buckets: MonthlyBucket[] = Array.from({ length: 12 }, (_, i) => ({
             month: MONTHS_ID[i],
             setuju: 0,
             ditolak: 0,
@@ -62,16 +108,22 @@ export async function GET(request: NextRequest) {
 
         // --- Hitung jumlah per bulan
         for (const c of campaigns) {
-            const m = c.createdAt.getMonth(); // 0..11
-            const decision = c.finalDecision; // agreed | declined | pending | null
+            // Prioritaskan field `month` (string). Jika tidak valid, fallback ke createdAt.
+            let monthIdx = monthIndexFromString(c.month);
+            if (monthIdx === null) {
+                // fallback ke createdAt
+                monthIdx = c.createdAt.getMonth(); // 0..11 (lokal)
+            }
 
-            if (decision === "agreed") buckets[m].setuju += 1;
-            else if (decision === "declined") buckets[m].ditolak += 1;
-            else buckets[m].tertunda += 1; // treat null as pending
+            // Normalisasi status
+            const decision = (c.finalDecision ?? "pending").toString().toLowerCase();
+            if (decision === "agreed") buckets[monthIdx].setuju += 1;
+            else if (decision === "declined") buckets[monthIdx].ditolak += 1;
+            else buckets[monthIdx].tertunda += 1; // treat unknown/null as pending
         }
 
-        // --- Filter sesuai status permintaan (tanpa ubah desain)
-        const filtered = buckets.map((b) => {
+        // --- Filter tampilan sesuai query `status`
+        const filtered: MonthlyBucket[] = buckets.map((b) => {
             if (status === "agreed") return { ...b, ditolak: 0, tertunda: 0 };
             if (status === "declined") return { ...b, setuju: 0, tertunda: 0 };
             if (status === "pending") return { ...b, setuju: 0, ditolak: 0 };
@@ -79,8 +131,8 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json(filtered, { status: 200 });
-    } catch (err) {
-        console.error("[API_REPORT_MONTHLY_ERROR]", err);
+    } catch (error: unknown) {
+        console.error("[API_REPORT_MONTHLY_ERROR]", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

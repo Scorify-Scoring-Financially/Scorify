@@ -2,13 +2,30 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-// ✅ Versi resmi untuk Next.js 15 — params adalah Promise<{ id }>
 export async function GET(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
+
+    const translateMap: Record<string, string> = {
+        pending: "Tertunda",
+        agreed: "Disetujui",
+        declined: "Ditolak",
+        success: "Berhasil",
+        failure: "Gagal",
+        "no_answer": "Tidak Dijawab",
+        unknown: "Tidak Diketahui",
+        nonexistent: "Tidak Ada",
+    };
+
+    // Fungsi bantu untuk terjemahkan hasil enum ke Bahasa Indonesia
+    function translateValue(value: string | null | undefined): string {
+        if (!value) return "-";
+        const lower = value.toLowerCase();
+        return translateMap[lower] || value;
+    }
     try {
-        const { id } = await context.params; // ✅ harus pakai await di sini
+        const { id } = await context.params;
 
         if (!id) {
             return NextResponse.json(
@@ -46,7 +63,7 @@ export async function GET(
             );
         }
 
-        // 🧾 Format riwayat interaksi
+        //  Format riwayat interaksi
         const formattedHistory = customer.interactionLogs.map((log) => ({
             id: log.id,
             type:
@@ -58,7 +75,7 @@ export async function GET(
             result:
                 log.type === "CATATAN_INTERNAL"
                     ? ""
-                    : `Sales: ${log.user?.name || "System"}. Hasil: ${log.callResult || "unknown"
+                    : `Sales: ${log.user?.name || "System"}. Hasil: ${translateValue(log.callResult) || translateValue("unknown")
                     }`,
         }));
 

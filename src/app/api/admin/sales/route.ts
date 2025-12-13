@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
-// 🚫 Matikan cache Next.js di level server
+// Non-cache
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * ✅ GET: Ambil semua sales (hanya role = Sales)
+ * ✅ GET: Ambil semua sales (role = "Sales")
  */
 export async function GET() {
     try {
@@ -18,7 +18,7 @@ export async function GET() {
         });
 
         return NextResponse.json({ sales }, { status: 200 });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("[GET_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal mengambil data sales" },
@@ -28,42 +28,45 @@ export async function GET() {
 }
 
 /**
- * ✅ POST: Tambah sales baru (ID otomatis increment)
+ * ✅ POST: Tambah sales baru (ID otomatis "sales_1", "sales_2", dst)
  */
 export async function POST(req: Request) {
     try {
-        const body = (await req.json()) as {
+        const body = await req.json();
+        const { id: incomingId, name, email, password } = body as {
+            id?: string;
             name?: string;
             email?: string;
             password?: string;
         };
 
-        const { name, email, password } = body;
-
         if (!name || !email || !password) {
             return NextResponse.json({ error: "Data tidak lengkap" }, { status: 400 });
         }
 
-        // Pastikan email unik
-        const existing = await db.user.findUnique({ where: { email } });
-        if (existing) {
-            return NextResponse.json({ error: "Email sudah digunakan" }, { status: 400 });
+        // Cek duplikasi email
+        const existingEmail = await db.user.findUnique({ where: { email } });
+        if (existingEmail) {
+            return NextResponse.json(
+                { error: "Email sudah digunakan" },
+                { status: 400 }
+            );
         }
 
-        // Ambil ID terakhir dari DB (yang role-nya Sales)
-        const last = await db.user.findFirst({
+        // Ambil ID terakhir dari Sales
+        const lastSales = await db.user.findFirst({
             where: { role: "Sales" },
             orderBy: { id: "desc" },
             select: { id: true },
         });
 
-        // Generate ID baru (S001, S002, dst)
-        let newId = "S001";
-        if (last?.id?.startsWith("S")) {
-            const num = parseInt(last.id.slice(1), 10);
-            if (!Number.isNaN(num)) {
-                newId = `S${(num + 1).toString().padStart(3, "0")}`;
-            }
+        let newId = "sales_1";
+        if (incomingId && incomingId.startsWith("sales_")) {
+            newId = incomingId;
+        } else if (lastSales?.id?.startsWith("sales_")) {
+            const num = parseInt(lastSales.id.replace("sales_", ""), 10);
+            const next = Number.isNaN(num) ? 1 : num + 1;
+            newId = `sales_${next}`;
         }
 
         // Hash password
@@ -84,7 +87,7 @@ export async function POST(req: Request) {
             { message: "Sales berhasil ditambahkan", id: newId },
             { status: 201 }
         );
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("[POST_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal menambah sales" },
@@ -94,40 +97,47 @@ export async function POST(req: Request) {
 }
 
 /**
- * ✅ PUT: Update data sales (boleh ubah nama/email/password)
+ * ✅ PUT: Update data sales (nama/email/password opsional)
  */
 export async function PUT(req: Request) {
     try {
-        const body = (await req.json()) as {
+        const body = await req.json();
+        const { id, name, email, password } = body as {
             id?: string;
             name?: string;
             email?: string;
             password?: string;
         };
 
-        const { id, name, email, password } = body;
-
         if (!id) {
             return NextResponse.json({ error: "ID wajib diisi" }, { status: 400 });
         }
 
-        const data: Record<string, string> = {};
-        if (name) data.name = name;
-        if (email) data.email = email;
+        const existing = await db.user.findUnique({ where: { id } });
+        if (!existing) {
+            return NextResponse.json(
+                { error: "Sales tidak ditemukan" },
+                { status: 404 }
+            );
+        }
+
+        const updateData: Record<string, string> = {};
+        if (name) updateData.name = name;
+        if (email) updateData.email = email;
         if (password && password.trim() !== "") {
-            data.passwordHash = await bcrypt.hash(password, 10);
+            updateData.passwordHash = await bcrypt.hash(password, 10);
         }
 
         await db.user.update({
             where: { id },
-            data,
+            data: updateData,
         });
 
         return NextResponse.json(
-            { message: "Sales berhasil diperbarui" },
+            { message: `Sales ${id} berhasil diperbarui` },
             { status: 200 }
         );
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("[PUT_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal memperbarui sales" },
@@ -145,13 +155,15 @@ export async function DELETE(req: Request) {
         const id = searchParams.get("id");
 
         if (!id) {
-            return NextResponse.json({ error: "ID tidak ditemukan" }, { status: 400 });
+            return NextResponse.json({ error: "ID wajib diisi" }, { status: 400 });
         }
 
-        // Pastikan ID ada sebelum dihapus
         const existing = await db.user.findUnique({ where: { id } });
         if (!existing) {
-            return NextResponse.json({ error: "Sales tidak ditemukan" }, { status: 404 });
+            return NextResponse.json(
+                { error: `Sales ${id} tidak ditemukan` },
+                { status: 404 }
+            );
         }
 
         await db.user.delete({ where: { id } });
@@ -160,7 +172,7 @@ export async function DELETE(req: Request) {
             { message: `Sales ${id} berhasil dihapus` },
             { status: 200 }
         );
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("[DELETE_SALES_ERROR]", error);
         return NextResponse.json(
             { error: "Gagal menghapus sales" },

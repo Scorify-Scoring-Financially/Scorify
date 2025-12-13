@@ -43,7 +43,7 @@ model PasswordResetToken {
 // ============================================
 
 model Customer {
-  id              String           @id @default(cuid()) @db.VarChar(255)
+  id              String           @id @db.VarChar(255)
   name            String           @db.VarChar(255)
   email           String           @unique @db.VarChar(255)
   phone           String?          @db.VarChar(255)
@@ -74,7 +74,7 @@ model Customer {
 // ============================================
 
 model Campaign {
-  id             String      @id @default(cuid()) @db.VarChar(255)
+  id             String      @id @db.VarChar(255)
   contact        String      @default("unknown") @db.VarChar(50)
   day_of_week    String      @default("unknown") @db.VarChar(50)
   month          String      @default("unknown") @db.VarChar(50)
@@ -91,7 +91,7 @@ model Campaign {
   user           User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Tambahan dari schema baru (finalDecision)
-  finalDecision  AgreementStatus?
+  finalDecision  FinalDecision?
 
   // Relasi ke skor dan prediksi
   leadScores     LeadScore[]
@@ -107,7 +107,7 @@ model Campaign {
 // ============================================
 
 model MacroData {
-  id             String   @id @default(cuid()) @db.VarChar(255)
+  id             String   @id @db.VarChar(255)
   month          String   @unique @db.VarChar(50)
   emp_var_rate   Float    @db.Real
   cons_price_idx Float    @db.Real
@@ -178,7 +178,7 @@ model leadscore {
 //  ENUMS MODERN (khusus Interaction dan Campaign)
 // ============================================
 
-enum AgreementStatus {
+enum FinalDecision {
   agreed
   declined
   pending

@@ -5,25 +5,22 @@ import {
   BarChart3,
   PanelLeftOpen,
   PanelLeftClose,
-  Sun,
-  Moon,
-  Globe,
   LogOut,
   Users,
+  Loader2, // ✅ spinner icon dari lucide-react
 } from "lucide-react";
 
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
-  const [theme, setTheme] = useState("light");
-  const [langOpen, setLangOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // ✅ state feedback logout
 
   const pathname = usePathname();
   const router = useRouter();
 
   /* DETECT ROLE dari URL
-     TODO: nanti ini diganti dengan role dari backend setelah login*/
+     TODO: nanti ini diganti dengan role dari backend setelah login */
   const role = pathname.startsWith("/admin") ? "admin" : "user";
 
   /* Menu untuk User */
@@ -45,9 +42,23 @@ export default function Sidebar() {
   /* Cek active termasuk turunan path */
   const isActive = (p: string) => pathname.startsWith(p);
 
-  const handleLogout = () => {
-    // TODO: nanti remove token & role dari auth backend
-    router.push("/login");
+  // ✅ Tombol logout dengan feedback dan spinner
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+
+      if (!res.ok) {
+        console.error("Gagal logout:", await res.text());
+        return;
+      }
+
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -87,8 +98,8 @@ export default function Sidebar() {
                 key={item.label}
                 href={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${isActive(item.path)
-                    ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold"
-                    : "text-gray-700"
+                  ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-semibold"
+                  : "text-gray-700"
                   } ${!isOpen ? "justify-center" : "justify-start"}`}
               >
                 {item.icon}
@@ -105,7 +116,6 @@ export default function Sidebar() {
               className={`rounded-full bg-[#00A884] text-white font-bold flex items-center justify-center ${isOpen ? "w-10 h-10" : "w-8 h-8 text-sm"
                 }`}
             >
-              {/* TODO: backend set initials sesuai user */}
               {role === "admin" ? "AD" : "SA"}
             </div>
             {isOpen && (
@@ -124,11 +134,22 @@ export default function Sidebar() {
           <div className={`flex items-center ${isOpen ? "px-3" : "px-1"}`}>
             <button
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className={`rounded-lg bg-[var(--color-accent)] text-white font-semibold text-sm hover:bg-[#009970] transition flex items-center justify-center gap-2 ${isOpen ? "w-full h-10" : "w-8 h-8"
                 }`}
             >
-              <LogOut size={isOpen ? 18 : 14} />
-              {isOpen && <span>Keluar</span>}
+              {/* ✅ Spinner muncul ketika logout */}
+              {isLoggingOut ? (
+                <>
+                  <Loader2 size={isOpen ? 18 : 14} className="animate-spin" />
+                  {isOpen && <span>Keluar...</span>}
+                </>
+              ) : (
+                <>
+                  <LogOut size={isOpen ? 18 : 14} />
+                  {isOpen && <span>Keluar</span>}
+                </>
+              )}
             </button>
           </div>
 

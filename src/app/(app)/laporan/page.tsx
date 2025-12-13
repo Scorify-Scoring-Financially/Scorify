@@ -206,13 +206,6 @@ export default function LaporanSalesPage() {
               <option value="pending">Tertunda</option>
             </select>
 
-            {/* Tombol filter */}
-            <button
-              className="flex items-center gap-2 rounded-lg px-3 py-2 border border-[var(--color-accent,#00A884)] text-[var(--color-accent,#00A884)] font-semibold text-sm bg-white transition hover:bg-[var(--color-accent,#00A884)] hover:text-white"
-            >
-              Terapkan Filter
-            </button>
-
             {/* Unduh CSV */}
             <button
               onClick={handleDownloadCSV}
@@ -355,10 +348,8 @@ export default function LaporanSalesPage() {
             </div>
           </div>
         </div>
-
         <div className="text-sm text-gray-500">
-          Data tahun <b>{year}</b> • Status:{" "}
-          <b>{status === "all" ? "Semua" : status}</b>
+          Data tahun <b>{year}</b>
         </div>
       </main>
     </div>

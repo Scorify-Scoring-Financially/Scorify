@@ -16,6 +16,8 @@ interface CustomerData {
   skor: number | null;
   interaksi: string;
   salesId?: string;
+  salesName?: string;
+
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -274,7 +276,7 @@ export default function DashboardAdminPage() {
                           </span>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                          {customer.salesId ?? "-"}
+                          {customer.salesName ?? "-"}
                         </td>
                         <td className="px-3 py-2">{customer.interaksi}</td>
                       </tr>

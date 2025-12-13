@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { verifyJwt } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
-// ✅ Next.js 15 route handler type
+
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -12,7 +14,29 @@ export async function POST(
         const body = await request.json();
         const { note, callResult, statusPenawaran } = body;
 
-        // 🧩 Validasi input
+        // Ambil token dari cookie
+        const cookieStore = await cookies();
+        const token = cookieStore.get("token");
+
+        if (!token) {
+            return NextResponse.json(
+                { error: "Unauthorized: No token provided" },
+                { status: 401 }
+            );
+        }
+
+        // Verifikasi token JWT
+        const payload = await verifyJwt(token.value);
+        if (!payload || !("id" in payload)) {
+            return NextResponse.json(
+                { error: "Unauthorized: Invalid token" },
+                { status: 401 }
+            );
+        }
+
+        const userId = payload.id as string;
+
+        //  Validasi input
         if (!id || !note) {
             return NextResponse.json(
                 { error: "Data tidak lengkap" },
@@ -20,18 +44,18 @@ export async function POST(
             );
         }
 
-        // 🧠 Simpan log panggilan ke InteractionLog
+        //  Simpan log panggilan ke InteractionLog
         const log = await db.interactionLog.create({
             data: {
                 type: "PANGGILAN_TELEPON",
                 note: note.trim(),
                 callResult,
                 customerId: id,
-                userId: null, // nanti bisa diisi ID sales yg login
+                userId, // ⬅️ ID user dari JWT
             },
         });
 
-        // ✅ Jika ada statusPenawaran, update campaign terakhir
+        // Jika ada statusPenawaran, update campaign terakhir milik customer
         if (statusPenawaran) {
             const latestCampaign = await db.campaign.findFirst({
                 where: { customerId: id },
@@ -41,20 +65,30 @@ export async function POST(
             if (latestCampaign) {
                 await db.campaign.update({
                     where: { id: latestCampaign.id },
-                    data: { finalDecision: statusPenawaran },
+                    data: {
+                        finalDecision: statusPenawaran,
+                        userId, // ⬅ simpan siapa sales yang terakhir update campaign
+                    },
                 });
             }
         }
 
         return NextResponse.json(
-            { message: "Panggilan dan status penawaran tersimpan", data: log },
+            {
+                message: "Panggilan dan status penawaran tersimpan",
+                data: log,
+            },
             { status: 201 }
         );
-    } catch (error) {
-        console.error("[API_CUSTOMER_CALL_ERROR]", error);
+    } catch (error: unknown) {
+        console.error("[API_CUSTOMER_CALL_ERROR]", {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+        });
 
         if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error instanceof PrismaClientKnownRequestError &&
             error.code === "P2023"
         ) {
             return NextResponse.json(
@@ -64,7 +98,15 @@ export async function POST(
         }
 
         return NextResponse.json(
-            { error: "Terjadi kesalahan pada server" },
+            {
+                error: "Terjadi kesalahan pada server",
+                debug: {
+                    name: error?.name,
+                    message: error?.message,
+                    code: error?.code,
+                    stack: error?.stack,
+                },
+            },
             { status: 500 }
         );
     }

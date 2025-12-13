@@ -24,49 +24,59 @@ export default function SalesPage() {
   const [editing, setEditing] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  // error state
+  // --- Error state ---
   const [errorName, setErrorName] = useState<string | null>(null);
   const [errorEmail, setErrorEmail] = useState<string | null>(null);
   const [errorPassword, setErrorPassword] = useState<string | null>(null);
 
+  // --- Modal state ---
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [modalAction, setModalAction] = useState<ModalAction>(null);
   const [modalPayload, setModalPayload] = useState<string | null>(null);
 
-  // 🔹 Ambil data Sales dari API
+  // =========================================================
+  // 🔹 Fetch Data Sales dari API
+  // =========================================================
   const fetchSales = async () => {
-    const res = await fetch("/api/admin/sales", { cache: "no-store" });
-    const data = await res.json();
-    if (data.sales) setItems(data.sales);
+    try {
+      const res = await fetch("/api/admin/sales", { cache: "no-store" });
+      const data = await res.json();
+      if (data.sales) setItems(data.sales);
+    } catch (err) {
+      console.error("Fetch Sales Error:", err);
+    }
   };
 
   useEffect(() => {
     fetchSales();
   }, []);
 
-  // 🔹 Generate ID baru berdasarkan data terakhir
+  // =========================================================
+  // 🔹 Generate ID Baru Otomatis (sales_1, sales_2, dst)
+  // =========================================================
   const generateNewId = () => {
-    if (!items || items.length === 0) return "S001";
+    if (!items || items.length === 0) return "sales_1";
 
     const numericIds = items
-      .map((it) => parseInt(it.id.replace("S", "")))
+      .map((it) => parseInt(it.id.replace("sales_", "")))
       .filter((n) => !isNaN(n));
 
     const maxId = Math.max(...numericIds);
+    const next = maxId === -Infinity ? 1 : maxId + 1;
 
-    if (maxId === -Infinity) return "S001"; // FIX S-Infinity bug
-
-    const next = (maxId + 1).toString().padStart(3, "0");
-    return `S${next}`;
+    return `sales_${next}`;
   };
 
+  // setiap kali data berubah, form ID update otomatis (kalau bukan editing)
   useEffect(() => {
     if (!editing) {
       setForm({ id: generateNewId(), name: "", email: "", password: "" });
     }
   }, [items, editing]);
 
-  // --- modal controls
+  // =========================================================
+  // 🔹 Modal Handler
+  // =========================================================
   const openModal = (action: ModalAction, payload: string | null = null) => {
     setModalAction(action);
     setModalPayload(payload);
@@ -79,7 +89,9 @@ export default function SalesPage() {
     setModalPayload(null);
   };
 
-  // --- Validasi form sebelum submit
+  // =========================================================
+  // 🔹 Validasi Form
+  // =========================================================
   const validateForm = (): boolean => {
     let valid = true;
     setErrorName(null);
@@ -112,6 +124,9 @@ export default function SalesPage() {
     return valid;
   };
 
+  // =========================================================
+  // 🔹 Konfirmasi Modal (Add / Update / Delete)
+  // =========================================================
   const confirmModal = async () => {
     try {
       if (modalAction === "delete" && modalPayload) {
@@ -120,7 +135,7 @@ export default function SalesPage() {
         await fetch("/api/admin/sales", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(form), // ✅ kirim ID + data form
         });
       } else if (modalAction === "update") {
         await fetch("/api/admin/sales", {
@@ -139,14 +154,18 @@ export default function SalesPage() {
     }
   };
 
+  // =========================================================
+  // 🔹 Submit Form
+  // =========================================================
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     openModal(editing ? "update" : "add");
   };
 
+  // =========================================================
+  // 🔹 Edit & Delete Handler
+  // =========================================================
   const handleEdit = (item: SalesItem) => {
     setForm({ ...item, password: "" });
     setEditing(true);
@@ -169,12 +188,15 @@ export default function SalesPage() {
   const isFormIncomplete =
     !form.name.trim() || !form.email.trim() || (!form.password.trim() && !editing);
 
+  // =========================================================
+  // 🔹 Render
+  // =========================================================
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4]">
       <Sidebar />
 
       <main className="flex-1 flex flex-col">
-        {/* Header */}
+        {/* HEADER */}
         <header className="flex items-center justify-between px-8 pt-6 pb-4">
           <div>
             <h1 className="text-3xl font-semibold">Kelola Data Sales</h1>
@@ -187,7 +209,7 @@ export default function SalesPage() {
           </div>
         </header>
 
-        {/* Form + Table */}
+        {/* FORM + TABLE */}
         <section className="px-8 pb-8 space-y-6">
           {/* FORM */}
           <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
@@ -200,6 +222,7 @@ export default function SalesPage() {
               onSubmit={handleSubmit}
               autoComplete="off"
             >
+              {/* ID */}
               <div>
                 <input
                   placeholder="ID Sales"
@@ -209,19 +232,20 @@ export default function SalesPage() {
                 />
               </div>
 
+              {/* Nama */}
               <div>
                 <input
                   placeholder="Nama Sales"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
-                  autoComplete="off"
                 />
                 {errorName && (
                   <p className="text-xs text-red-600 mt-1">{errorName}</p>
                 )}
               </div>
 
+              {/* Email */}
               <div>
                 <input
                   placeholder="Email"
@@ -229,13 +253,13 @@ export default function SalesPage() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-full"
-                  autoComplete="off"
                 />
                 {errorEmail && (
                   <p className="text-xs text-red-600 mt-1">{errorEmail}</p>
                 )}
               </div>
 
+              {/* Password */}
               <div className="relative">
                 <input
                   placeholder="Password"
@@ -257,6 +281,7 @@ export default function SalesPage() {
                 )}
               </div>
 
+              {/* Tombol Submit */}
               <div className="col-span-1 md:col-span-4">
                 <button
                   type="submit"

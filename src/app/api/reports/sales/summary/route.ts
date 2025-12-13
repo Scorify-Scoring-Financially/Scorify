@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// (opsional, tetap disimpan untuk konsistensi)
-const MONTHS_ID = [
+// (opsional, tetap disimpan untuk konsistensi tampilan chart)
+const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
@@ -56,18 +56,18 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        // Total nasabah (distinct customer dalam campaign user pada tahun itu)
+        // --- Hitung total nasabah (distinct customer)
         const distinctCustomerIds = new Set<string>();
         campaigns.forEach((c) => distinctCustomerIds.add(c.customerId));
         const totalCustomers = distinctCustomerIds.size;
 
-        // Persetujuan
+        // --- Hitung persetujuan
         const agreed = campaigns.filter((c) => c.finalDecision === "agreed").length;
         const declined = campaigns.filter((c) => c.finalDecision === "declined").length;
         const decided = agreed + declined;
         const approvalRate = decided > 0 ? agreed / decided : 0;
 
-        // Dihubungi
+        // --- Hitung jumlah nasabah dihubungi (finalDecision bukan pending)
         const contactedCustomers = new Set<string>();
         campaigns.forEach((c) => {
             if (c.finalDecision === "agreed" || c.finalDecision === "declined") {
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // --- Distribusi skor (leadScore terbaru per customer)
+        // --- Ambil distribusi skor (leadScore terbaru per customer)
         const scored = await db.leadScore.findMany({
             where: {
                 campaign: { userId, createdAt: { gte, lt } },
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
             select: { customerId: true, score: true },
         });
 
-        // Ambil latest per customer (null diganti 0)
+        // --- Ambil skor terbaru per customer
         const latestPerCustomer = new Map<string, number>();
         for (const s of scored) {
             if (!latestPerCustomer.has(s.customerId)) {
@@ -109,18 +109,20 @@ export async function GET(request: NextRequest) {
             low: low / totalScored,
         };
 
+        // ✅ Kirim hasil JSON
         return NextResponse.json(
             {
                 totalCustomers,
                 approvalRate,
                 contactedCustomers: contactedCustomers.size,
                 scoreDistribution,
+                months: MONTHS_ID,
                 year,
             },
             { status: 200 }
         );
-    } catch (err) {
-        console.error("[API_REPORT_SUMMARY_ERROR]", err);
+    } catch (error: unknown) {
+        console.error("[API_REPORT_SUMMARY_ERROR]", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }
