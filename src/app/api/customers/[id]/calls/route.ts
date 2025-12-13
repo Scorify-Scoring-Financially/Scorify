@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { verifyJwt } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { CallResult } from "@prisma/client"; // ✅ tambahan import enum
 
 export async function POST(
     request: NextRequest,
@@ -47,12 +48,22 @@ export async function POST(
             );
         }
 
+        // ✅ Normalisasi nilai callResult agar sesuai enum CallResult
+        let safeCallResult: CallResult | null | undefined = undefined;
+        if (callResult) {
+            const normalized = callResult.trim().toLowerCase();
+            if (normalized === "success") safeCallResult = "success";
+            else if (normalized === "failure") safeCallResult = "failure";
+            else if (normalized === "no_answer" || normalized === "no answer") safeCallResult = "no_answer";
+            else safeCallResult = "unknown";
+        }
+
         // Simpan log panggilan ke InteractionLog
         const log = await db.interactionLog.create({
             data: {
                 type: "PANGGILAN_TELEPON",
                 note: note.trim(),
-                callResult,
+                callResult: safeCallResult, // ✅ gunakan nilai aman
                 customerId: id,
                 userId,
             },

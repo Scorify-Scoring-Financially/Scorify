@@ -190,7 +190,7 @@ export default function AdminCustomerDetailPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 flex flex-col h-full">
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 flex flex-col h-[450px]">
               <h3 className="text-lg font-semibold mb-4">Riwayat & Catatan Interaksi</h3>
 
               <div className="flex-1 space-y-5 overflow-y-auto pr-2">
