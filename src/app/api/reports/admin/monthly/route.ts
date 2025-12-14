@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
 
         // --- Hitung agregasi per bulan ---
         for (const c of campaigns) {
-            const idx = getMonthIndex(c.month, c.createdAt);
+            // ✅ FIX TYPE ERROR (tanpa ubah logic)
+            const idx = getMonthIndex(c.month, c.createdAt ?? undefined);
             if (idx < 0 || idx > 11) continue;
 
             const decision = (c.finalDecision || "pending").toLowerCase();
