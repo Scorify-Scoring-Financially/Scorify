@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
@@ -24,6 +24,7 @@ import { Prisma } from "@prisma/client";
  */
 
 export async function GET(
+    request: NextRequest,
     context: { params: { id: string } }
 ) {
 
