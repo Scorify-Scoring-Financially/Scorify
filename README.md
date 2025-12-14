@@ -66,6 +66,10 @@ Sebelum memulai, pastikan Anda sudah memasang:
    Anda dapat mengunduh proyek melalui dua cara:
    * Download file ZIP dari GitHub (menu *Code → Download ZIP*)
    * Atau menggunakan git clone dengan URL: `https://github.com/Scorify-Scoring-Financially/Scorify.git`
+     
+     ```
+        git clone https://github.com/Scorify-Scoring-Financially/Scorify.git
+     ```
 
 2. **Ekstrak File (Jika Menggunakan ZIP)**
    Jika Anda mengunduh format ZIP, ekstrak folder proyek ke direktori yang diinginkan.
@@ -79,17 +83,17 @@ Sebelum memulai, pastikan Anda sudah memasang:
     npm install
    ```
 
-7. **Generate Prisma Client** Jalankan perintah `npx prisma generate` agar Prisma Client dapat digunakan.
+6. **Generate Prisma Client** Jalankan perintah `npx prisma generate` agar Prisma Client dapat digunakan.
    ```
    npx prisma generate
    ```
 
-9. **Jalankan Aplikasi** Gunakan perintah `npm run dev` untuk menjalankan aplikasi dalam mode pengembangan.
+7. **Jalankan Aplikasi** Gunakan perintah `npm run dev` untuk menjalankan aplikasi dalam mode pengembangan.
   ```
     npm run dev
   ```
 
-11. **Selesai** Aplikasi dapat diakses melalui browser pada alamat: 
+8. **Selesai** Aplikasi dapat diakses melalui browser pada alamat: 
 ```
     http://localhost:3000/
 ```
@@ -113,13 +117,18 @@ Gunakan akun berikut untuk mencoba fitur aplikasi:
 
 ## 📁 Setup Environment
 
-Proyek *Scorify* sudah dilengkapi dengan file `.env`, sehingga tidak memerlukan konfigurasi environment tambahan.  
-Pastikan file `.env` tetap berada di direktori utama proyek karena berisi variabel penting seperti:
+Proyek Scorify telah menyediakan file `.env.example` sebagai template konfigurasi environment.
+Sebelum menjalankan aplikasi, salin file tersebut menjadi `.env` dan isi variabel-variabel penting sesuai kebutuhan Anda:
+
+```
+  cp .env.example .env
+```
+Pastikan untuk melengkapi nilai variabel berikut:
 
 - `DATABASE_URL` – alamat koneksi database yang digunakan aplikasi  
 - `JWT_SECRET` – kunci untuk proses autentikasi JWT  
 
-Apabila Anda ingin menggunakan database atau server lain, cukup menyesuaikan nilai variabel tersebut di dalam file `.env`.
+Apabila Anda menggunakan database atau server berbeda, cukup sesuaikan nilai variabel-variabel tersebut di file `.env` yang telah Anda buat.
 
 ---
 
