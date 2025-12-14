@@ -75,12 +75,24 @@ Sebelum memulai, pastikan Anda sudah memasang:
 4. **Buka Terminal** Gunakan terminal terintegrasi di editor (menu *Terminal → New Terminal* atau shortcut *Ctrl + `*).
 
 5. **Install Dependencies** Jalankan perintah `npm install` untuk menginstal seluruh dependensi aplikasi.
+   ```
+    npm install
+   ```
 
-6. **Generate Prisma Client** Jalankan perintah `npx prisma generate` agar Prisma Client dapat digunakan.
+7. **Generate Prisma Client** Jalankan perintah `npx prisma generate` agar Prisma Client dapat digunakan.
+   ```
+   npx prisma generate
+   ```
 
-7. **Jalankan Aplikasi** Gunakan perintah `npm run dev` untuk menjalankan aplikasi dalam mode pengembangan.
+9. **Jalankan Aplikasi** Gunakan perintah `npm run dev` untuk menjalankan aplikasi dalam mode pengembangan.
+  ```
+    npm run dev
+  ```
 
-8. **Selesai** Aplikasi dapat diakses melalui browser pada alamat: `(http://localhost:3000)`
+11. **Selesai** Aplikasi dapat diakses melalui browser pada alamat: 
+```
+    http://localhost:3000/
+```
    
 ### 🔐 Akun untuk Pengujian
 
@@ -90,10 +102,13 @@ Gunakan akun berikut untuk mencoba fitur aplikasi:
 - **Email:** `admin@scorify.com`
 - **Password:** `admin123`
 
-**Sales**
-- **Email:** `sales1@scorify.com`
-- **Password:** `sales123`
+**Sales 1**
+- **Email:** `dwikhadafi@scorify.com`
+- **Password:** `dafi123`
 
+**Sales 2**
+- **Email:** `shafa.af@scorify.com`
+- **Password:** `shafa123`
 ---
 
 ## 📁 Setup Environment
@@ -121,7 +136,7 @@ Apabila Anda ingin menggunakan database atau server lain, cukup menyesuaikan nil
 - Autentikasi & otorisasi menggunakan middleware
 - Mengelola data nasabah dan user (Admin & Sales)
 - Terhubung ke database PostgreSQL
-- Integrasi penyimpanan data & aset menggunakan AWS
+- Integrasi penyimpanan data & aset menggunakan GCP
 
 ### Machine Learning
 
@@ -135,8 +150,8 @@ Apabila Anda ingin menggunakan database atau server lain, cukup menyesuaikan nil
 - File model terlatih dapat diunduh melalui Google Drive → **[Download Model](https://drive.google.com/drive/folders/1DT857d-xcnRz_UuIdplyAPIPrYMk97sf?usp=sharing)**
 
 ### 🎥 Demo & Akses Aplikasi
-🌐 Website: *(diisi nanti)*  
-🎥 Video Demo: *(diisi nanti)* 
+- 🌐 Website: **[Click Here](https://scorify-two.vercel.app/)** 
+- 🎥 Video Demo: *(diisi nanti)* 
 
 ---
 
