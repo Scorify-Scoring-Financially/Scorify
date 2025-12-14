@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
         const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
         const yearRange = toYearRange(year);
 
-
         const where: Prisma.CampaignWhereInput = {
             ...(yearRange ? { createdAt: yearRange } : {}),
         };
@@ -44,7 +43,6 @@ export async function GET(request: NextRequest) {
         if (statusParam !== "all") {
             where.finalDecision = statusParam as "agreed" | "declined" | "pending";
         }
-
 
         const now = new Date();
         const thisMonthRange = { gte: startOfMonth(now), lt: endOfMonth(now) };
@@ -84,7 +82,6 @@ export async function GET(request: NextRequest) {
             }),
         ]);
 
-
         const distinctCustomerIds = new Set(thisMonthCampaigns.map((c) => c.customerId));
         const totalCustomers = distinctCustomerIds.size;
 
@@ -96,11 +93,15 @@ export async function GET(request: NextRequest) {
             (c) => c.finalDecision && c.finalDecision !== "pending"
         ).length;
 
-
         const latestScorePerCustomer = new Map<string, number>();
         thisMonthCampaigns
             .slice()
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            // ✅ FIX build error: createdAt bisa null, tambahkan fallback aman
+            .sort((a, b) => {
+                const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+                const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+                return bTime - aTime;
+            })
             .forEach((c) => {
                 const s = c.leadScores?.[0]?.score;
                 if (s !== undefined && s !== null && !latestScorePerCustomer.has(c.customerId)) {
@@ -124,7 +125,6 @@ export async function GET(request: NextRequest) {
             medium: medium / denom,
             low: low / denom,
         };
-
 
         const prevDistinct = new Set(prevMonthCampaigns.map((c) => c.customerId));
         const prevCustomers = prevDistinct.size;

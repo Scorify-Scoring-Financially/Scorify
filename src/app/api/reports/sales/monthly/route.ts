@@ -3,12 +3,10 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-
 const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
 ];
-
 
 const MONTH_INDEX: Record<string, number> = {
     jan: 0, january: 0,
@@ -25,13 +23,11 @@ const MONTH_INDEX: Record<string, number> = {
     dec: 11, des: 11, december: 11, desember: 11,
 };
 
-
 function monthIndexFromString(m?: string | null): number | null {
     if (!m) return null;
     const key = m.trim().toLowerCase();
     return key in MONTH_INDEX ? MONTH_INDEX[key] : null;
 }
-
 
 interface JwtPayload {
     id: string;
@@ -109,8 +105,8 @@ export async function GET(request: NextRequest) {
         for (const c of campaigns) {
             let monthIdx = monthIndexFromString(c.month);
             if (monthIdx === null) {
-                // fallback ke createdAt
-                monthIdx = c.createdAt.getMonth();
+                // ✅ FIX TypeScript build error: pastikan createdAt bukan null
+                monthIdx = c.createdAt ? c.createdAt.getMonth() : 0;
             }
 
             // Normalisasi status
