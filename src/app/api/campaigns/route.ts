@@ -57,7 +57,12 @@ export async function POST(request: NextRequest) {
 
         if (lastCampaign) {
             previous = lastCampaign.campaign;
-            const diffTime = Math.abs(now.getTime() - lastCampaign.createdAt.getTime());
+
+            // ✅ FIX build error: createdAt bisa dianggap null oleh TypeScript
+            const diffTime = Math.abs(
+                now.getTime() - (lastCampaign.createdAt?.getTime() ?? now.getTime())
+            );
+
             pdays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
 
