@@ -3,6 +3,39 @@ import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+/**
+ * =========================================================
+ * 🔐 AUTH API — /api/auth/me
+ * =========================================================
+ * Fungsi:
+ *   Memverifikasi identitas pengguna berdasarkan JWT
+ *   yang tersimpan di cookie (HttpOnly `token`).
+ *
+ * Alur utama:
+ *   1. Ambil token JWT dari cookie `token`.
+ *   2. Verifikasi validitas token (cek signature & masa berlaku).
+ *   3. Ambil data user dari database berdasarkan `payload.id`.
+ *   4. Kembalikan informasi user tanpa data sensitif.
+ *
+ * Keamanan:
+ *   - JWT diverifikasi dengan secret server-side.
+ *   - Token disimpan di cookie HttpOnly (tidak bisa diakses dari JS).
+ *   - Menangani error token kadaluarsa & tidak valid.
+ *
+ * Response Contoh:
+ * {
+ *   "user": {
+ *     "id": "sales_12",
+ *     "email": "user@example.com",
+ *     "name": "John Doe",
+ *     "phone": "08123456789",
+ *     "role": "Sales",
+ *     "createdAt": "2025-12-14T10:20:30.000Z"
+ *   }
+ * }
+ * =========================================================
+ */
+
 export async function GET() {
     try {
         const cookieStore = await cookies();

@@ -4,6 +4,25 @@ import { verifyJwt } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
+/**
+ * =========================================================
+ *  API — /api/customers/[id]/notes
+ * =========================================================
+ * Fungsi:
+ *   Menambahkan catatan internal (non-panggilan) ke riwayat
+ *   interaksi customer oleh user (Sales/Admin).
+ *
+ * Akses:
+ *   - Hanya user dengan token JWT valid.
+ *
+ * Alur:
+ *   1 Verifikasi JWT dari cookie.
+ *   2 Validasi input request body.
+ *   3 Pastikan customer benar-benar ada di database.
+ *   4 Tambahkan catatan ke tabel `interactionLog`.
+ * =========================================================
+ */
+
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }

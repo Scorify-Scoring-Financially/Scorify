@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * admin/laporan/page.tsx
+ *
+ * Halaman laporan utama untuk admin.
+ * Menyediakan ringkasan metrik bisnis dan visualisasi data (chart) terkait
+ * performa nasabah, tingkat persetujuan deposit, serta distribusi skor.
+ *
+ * Fitur utama:
+ * - Filter berdasarkan kategori skor, sales, tahun, dan status penawaran.
+ * - Grafik donat (distribusi skor nasabah).
+ * - Grafik batang (status penawaran deposit bulanan).
+ * - Unduh laporan dalam format CSV.
+ */
+
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import {

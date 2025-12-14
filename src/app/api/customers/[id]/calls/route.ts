@@ -5,6 +5,26 @@ import { cookies } from "next/headers";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { CallResult } from "@prisma/client";
 
+/**
+ * =========================================================
+ *  API — /api/customers/[id]/calls
+ * =========================================================
+ * Fungsi:
+ *   Mencatat hasil panggilan (telepon) oleh Sales kepada Customer
+ *   serta memperbarui status penawaran terakhir (finalDecision)
+ *   pada campaign yang terkait.
+ *
+ * Akses:
+ *   - Hanya user yang memiliki JWT valid (Sales/Admin).
+ *
+ * Alur utama:
+ *   1. Autentikasi JWT dari cookie "token"
+ *   2. Validasi input (note, callResult, statusPenawaran)
+ *   3. Simpan log interaksi ke tabel `interactionLog`
+ *   4. Update status penawaran terakhir di tabel `campaign`
+ * =========================================================
+ */
+
 export async function POST(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -48,7 +68,6 @@ export async function POST(
             );
         }
 
-        // ✅ Normalisasi nilai callResult agar sesuai enum CallResult
         let safeCallResult: CallResult | null | undefined = undefined;
         if (callResult) {
             const normalized = callResult.trim().toLowerCase();
@@ -63,13 +82,12 @@ export async function POST(
             data: {
                 type: "PANGGILAN_TELEPON",
                 note: note.trim(),
-                callResult: safeCallResult, // ✅ gunakan nilai aman
+                callResult: safeCallResult,
                 customerId: id,
                 userId,
             },
         });
 
-        // Jika ada statusPenawaran, update campaign terakhir milik customer
         if (statusPenawaran) {
             const latestCampaign = await db.campaign.findFirst({
                 where: { customerId: id },
@@ -87,7 +105,7 @@ export async function POST(
                 await db.campaign.update({
                     where: { id: latestCampaign.id },
                     data: {
-                        finalDecision: safeFinalDecision, // ✅ gunakan nilai aman
+                        finalDecision: safeFinalDecision,
                         userId,
                     },
                 });

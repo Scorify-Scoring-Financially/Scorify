@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * dashboard/customer/[id]/page.tsx
+ *
+ * Halaman detail nasabah untuk sales atau admin.
+ * Menampilkan data pribadi, status penawaran, skor peluang, dan riwayat interaksi.
+ * Dilengkapi fitur untuk menambahkan catatan internal serta simulasi panggilan telepon.
+ *
+ * Fitur utama:
+ * - Ambil detail nasabah dan riwayat dari API `/api/customers/[id]`
+ * - Tambah catatan internal via `/api/customers/[id]/notes`
+ * - Simulasi panggilan dengan hasil (berhasil, gagal, tidak dijawab, dll)
+ * - Update status penawaran (disetujui, ditolak, tertunda)
+ */
+
+
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Phone, FileText, ArrowLeft, Plus } from "lucide-react";

@@ -3,6 +3,20 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+/**
+ * =========================================================
+ *  API — GET /api/dashboard/stats
+ * =========================================================
+ * Fitur:
+ *   - Menampilkan ringkasan data statistik dashboard:
+ *       1 Jumlah nasabah dengan skor ≥ 0.8 (High Priority)
+ *       2 Total seluruh nasabah yang terlihat oleh user login
+ *   - Role-based access:
+ *       - Admin → semua customer
+ *       - Sales → hanya customer miliknya
+ * =========================================================
+ */
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

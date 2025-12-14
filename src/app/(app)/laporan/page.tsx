@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * laporan/page.tsx
+ *
+ * Halaman laporan performa penjualan (sales performance dashboard).
+ * Fitur utama:
+ *  - Statistik key metrics (KPI): total nasabah, tingkat persetujuan, jumlah yang dihubungi.
+ *  - Visualisasi data penawaran dengan grafik batang (BarChart).
+ *  - Distribusi skor nasabah dalam bentuk donat (PieChart).
+ *  - Filter berdasarkan kategori skor, tahun, dan status penawaran.
+ *  - Ekspor data laporan ke format CSV.
+ *
+ * Integrasi API:
+ *  - GET /api/reports/sales/summary     → ringkasan KPI dan distribusi skor
+ *  - GET /api/reports/sales/monthly     → data bulanan untuk grafik batang
+ */
+
 import React, { useMemo, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import {

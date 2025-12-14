@@ -2,7 +2,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-// ✅ Definisikan tipe data untuk ekspor CSV (lebih aman daripada any[])
+/**
+ * =========================================================
+ *  API — GET /api/export/csv
+ * =========================================================
+ * Fitur:
+ *   - Mengekspor daftar customer ke CSV
+ *   - Dapat difilter berdasarkan nama & skor peluang
+ *   - Role-based access:
+ *       • Sales → hanya customer miliknya
+ *       • Admin → semua customer
+ *
+ * Header CSV:
+ *   Nama, Usia, Pekerjaan, Status Pinjaman, Skor, Status Interaksi
+ * =========================================================
+ */
+
 interface ExportRow {
     nama: string;
     usia: number;
@@ -13,7 +28,7 @@ interface ExportRow {
 }
 
 // ==========================================================
-// 🔧 Fungsi: Konversi data JSON → CSV
+//  Fungsi: Konversi data JSON → CSV
 // ==========================================================
 function convertToCSV(data: ExportRow[]): string {
     if (data.length === 0) {

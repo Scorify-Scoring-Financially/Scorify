@@ -4,10 +4,15 @@ import type { JwtPayload } from "@/lib/auth"; // misal ada di auth.ts
 
 
 /**
- * Daftar halaman:
- * - AUTH_PATHS: halaman login/register (tidak boleh diakses saat sudah login)
- * - PROTECTED_PATHS: halaman yang wajib login
- * - PUBLIC_PATHS: halaman bebas (tanpa login)
+ * =========================================================
+ *  Middleware Akses Otentikasi & Role
+ * =========================================================
+ * Fitur:
+ *   - Redirect user tidak login ke /login (protected pages)
+ *   - Redirect user login ke dashboard sesuai role
+ *   - Cegah Sales mengakses halaman /admin
+ *   - Biarkan halaman public bebas diakses
+ * =========================================================
  */
 const AUTH_PATHS = ["/login"];
 const PROTECTED_PATHS = ["/dashboard", "/admin"];

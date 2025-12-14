@@ -2,6 +2,25 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
+/**
+ * =========================================================
+ *  API — GET /api/reports/sales/monthly
+ * =========================================================
+ * Fitur:
+ *   - Menghasilkan data agregasi bulanan untuk laporan Sales
+ *   - Dapat difilter berdasarkan:
+ *       • salesId  → (ID Sales atau "all")
+ *       • year     → (tahun spesifik)
+ *       • status   → ("agreed" | "declined" | "pending" | "all")
+ *
+ * Output:
+ *   [
+ *     { month: "Jan", setuju: 10, ditolak: 3, tertunda: 2 },
+ *     ...
+ *   ]
+ * =========================================================
+ */
+
 const MONTHS_ID = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
@@ -75,7 +94,6 @@ export async function GET(request: NextRequest) {
 
         // --- Hitung agregasi per bulan ---
         for (const c of campaigns) {
-            // ✅ FIX TYPE ERROR (tanpa ubah logic)
             const idx = getMonthIndex(c.month, c.createdAt ?? undefined);
             if (idx < 0 || idx > 11) continue;
 

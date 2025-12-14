@@ -5,6 +5,31 @@ import { formatEnumValue } from "@/lib/format";
 import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 
+/**
+ * =========================================================
+ * 👥 API — GET /api/customers
+ * =========================================================
+ * Fitur:
+ *   - Pagination (page, limit)
+ *   - Filter skor peluang: Tinggi / Sedang / Rendah
+ *   - Pencarian nama customer
+ *   - Role-based access:
+ *       • Sales hanya melihat customer miliknya
+ *       • Admin dapat melihat semua atau filter per Sales
+ *
+ * Response:
+ *   {
+ *     data: [ ... ],
+ *     pagination: {
+ *       totalItems,
+ *       totalPages,
+ *       currentPage,
+ *       itemsPerPage
+ *     }
+ *   }
+ * =========================================================
+ */
+
 // Non-cache
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,7 +59,7 @@ function translateValue(value: string | null | undefined): string {
 export async function GET(request: NextRequest) {
     try {
         // ======================================================
-        // 1️⃣ Ambil user login dari cookie JWT
+        // 1 Ambil user login dari cookie JWT
         // ======================================================
         const cookieStore = await cookies();
         const token = cookieStore.get("token");
@@ -58,7 +83,7 @@ export async function GET(request: NextRequest) {
         const userRole = payload.role as string;
 
         // ======================================================
-        // 2️⃣ Ambil query params: pagination, filter, sales
+        // 2 Ambil query params: pagination, filter, sales
         // ======================================================
         const { searchParams } = request.nextUrl;
         const page = parseInt(searchParams.get("page") || "1");
@@ -69,7 +94,7 @@ export async function GET(request: NextRequest) {
         const skip = (page - 1) * limit;
 
         // ======================================================
-        // 3️⃣ Bangun kondisi WHERE
+        // 3 Bangun kondisi WHERE
         // ======================================================
         const where: Prisma.CustomerWhereInput = {};
 
@@ -88,7 +113,7 @@ export async function GET(request: NextRequest) {
         }
 
         // ======================================================
-        // 4️⃣ Filter berdasarkan role
+        // 4 Filter berdasarkan role
         // ======================================================
         if (userRole === "Sales") {
             // Sales hanya bisa lihat customer miliknya
@@ -99,7 +124,7 @@ export async function GET(request: NextRequest) {
         }
 
         // ======================================================
-        // 5️⃣ Jalankan query paralel (data + count)
+        // 5 Jalankan query paralel (data + count)
         // ======================================================
         const [customers, totalItems] = await db.$transaction([
             db.customer.findMany({
@@ -136,7 +161,7 @@ export async function GET(request: NextRequest) {
         const totalPages = Math.ceil(totalItems / limit);
 
         // ======================================================
-        // 6️⃣ Format hasil response
+        // 6 Format hasil response
         // ======================================================
         const formattedData = customers.map((customer) => ({
             id: customer.id,
@@ -155,7 +180,7 @@ export async function GET(request: NextRequest) {
         }));
 
         // ======================================================
-        // 7️⃣ Kirim response sukses
+        // 7 Kirim response sukses
         // ======================================================
         return NextResponse.json(
             {

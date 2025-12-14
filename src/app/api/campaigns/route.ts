@@ -3,9 +3,29 @@ import { db } from '@/lib/db';
 import { verifyJwt } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { randomUUID } from 'crypto'; // opsional jika kamu ingin ID manual
 
-// Enums lokal (bagus — agar schema API tidak bergantung pada Prisma langsung)
+/**
+ * =========================================================
+ * CAMPAIGN LOG API — /api/campaigns
+ * =========================================================
+ * Fungsi:
+ *   Mencatat log panggilan atau interaksi campaign baru
+ *   antara Sales dan Customer, disertai konteks waktu,
+ *   status kontak, dan hasil panggilan sebelumnya.
+ *
+ * Akses:
+ *   - Hanya pengguna yang sudah login (JWT di cookie).
+ *   - Role: Sales (atau Admin bila diizinkan).
+ *
+ * Alur Utama:
+ *   1. Verifikasi JWT dari cookie.
+ *   2. Validasi input request body menggunakan Zod.
+ *   3. Ambil campaign terakhir customer untuk hitung `previous` & `pdays`.
+ *   4. Simpan campaign baru ke database.
+ *   5. Kembalikan log campaign yang baru dibuat.
+ * =========================================================
+ */
+
 const ContactTypeEnum = z.enum(['cellular', 'telephone', 'unknown']);
 const POutcomeEnum = z.enum(['success', 'failure', 'nonexistent', 'unknown']);
 
@@ -17,7 +37,7 @@ const logCampaignSchema = z.object({
 
 export async function POST(request: NextRequest) {
     try {
-        // 1️⃣ Autentikasi user via JWT di cookie
+        //  Autentikasi user via JWT di cookie
         const cookieStore = await cookies();
         const token = cookieStore.get('token')?.value;
         const payload = token ? await verifyJwt(token) : null;
@@ -28,7 +48,7 @@ export async function POST(request: NextRequest) {
 
         const userId = payload.id as string;
 
-        // 2️⃣ Validasi body dengan Zod
+        //  Validasi body dengan Zod
         const body = await request.json();
         const validation = logCampaignSchema.safeParse(body);
 
@@ -41,13 +61,13 @@ export async function POST(request: NextRequest) {
 
         const { customerId, contact, poutcome } = validation.data;
 
-        // 3️⃣ Ambil campaign terakhir untuk customer ini
+        // 3Ambil campaign terakhir untuk customer ini
         const lastCampaign = await db.campaign.findFirst({
             where: { customerId },
             orderBy: { createdAt: 'desc' },
         });
 
-        // 4️⃣ Hitung detail tambahan
+        // Hitung detail tambahan
         const now = new Date();
         const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' });
         const month = now.toLocaleString('en-US', { month: 'short' }).toLowerCase();
@@ -58,7 +78,6 @@ export async function POST(request: NextRequest) {
         if (lastCampaign) {
             previous = lastCampaign.campaign;
 
-            // ✅ FIX build error: createdAt bisa dianggap null oleh TypeScript
             const diffTime = Math.abs(
                 now.getTime() - (lastCampaign.createdAt?.getTime() ?? now.getTime())
             );
@@ -66,23 +85,21 @@ export async function POST(request: NextRequest) {
             pdays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
 
-        // 5️⃣ Simpan campaign baru
+        //  Simpan campaign baru
         const newCampaignLog = await db.campaign.create({
             data: {
-                // Tidak perlu id karena @default(cuid()) sudah ada
                 customerId,
                 userId,
                 contact,
                 day_of_week: dayOfWeek,
                 month,
-                campaign: 1, // kalau kamu mau increment sesuai previous, bisa ubah ke: previous + 1
+                campaign: 1,
                 previous,
                 pdays,
                 poutcome,
             },
         });
 
-        // 6️⃣ Kirim response sukses
         return NextResponse.json(
             { message: 'Panggilan berhasil dicatat', log: newCampaignLog },
             { status: 201 }

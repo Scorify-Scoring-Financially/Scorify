@@ -3,6 +3,21 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
+/**
+ * =========================================================
+ *  API — GET /api/reports/sales/summary
+ * =========================================================
+ * Fitur:
+ *   - Statistik laporan bulanan (total customer, approval rate, dsb.)
+ *   - Bandingkan data bulan ini vs bulan lalu
+ *   - Distribusi skor peluang (high/medium/low)
+ *   - Filter by:
+ *       • salesId (atau "all")
+ *       • year
+ *       • statusPenawaran (agreed / declined / pending / all)
+ * =========================================================
+ */
+
 const MONTHS: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
@@ -96,7 +111,6 @@ export async function GET(request: NextRequest) {
         const latestScorePerCustomer = new Map<string, number>();
         thisMonthCampaigns
             .slice()
-            // ✅ FIX build error: createdAt bisa null, tambahkan fallback aman
             .sort((a, b) => {
                 const aTime = a.createdAt ? a.createdAt.getTime() : 0;
                 const bTime = b.createdAt ? b.createdAt.getTime() : 0;

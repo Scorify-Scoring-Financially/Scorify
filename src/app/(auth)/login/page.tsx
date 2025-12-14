@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Login/Page.tsx
+ *
+ * Halaman autentikasi utama (login) untuk aplikasi Scorify.
+ *
+ * Fitur utama:
+ *  - Validasi input dengan Zod & React Hook Form.
+ *  - Login melalui endpoint `/api/auth/login`.
+ *  - Navigasi otomatis ke dashboard berdasarkan role pengguna.
+ *  - Dukungan tampilan responsif (desktop & mobile).
+ *  - Indikator proses dan error handling elegan di sisi klien.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";

@@ -1,10 +1,26 @@
 "use client";
 
+/**
+ * admin/dashboard/page.tsx
+ *
+ * Halaman utama untuk admin menampilkan ringkasan performa sales,
+ * statistik pelanggan, serta daftar nasabah dengan opsi filter dan ekspor data CSV.
+ * 
+ * Fitur utama:
+ * - Statistik ringkas (total nasabah, total sales, skor tinggi)
+ * - Filter berdasarkan skor, nama sales, dan pencarian teks
+ * - Pagination dinamis
+ * - Ekspor data dalam format CSV
+ */
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import Sidebar from "@/components/layout/Sidebar";
 
+// ==========================
+// Type Definitions
+// ==========================
 type Filter = "Semua" | "Tinggi" | "Sedang" | "Rendah";
 
 interface CustomerData {

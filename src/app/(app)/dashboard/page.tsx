@@ -1,5 +1,22 @@
 "use client";
 
+/**
+ * dashboard/page.tsx
+ *
+ * Halaman utama untuk Sales yang menampilkan daftar peluang nasabah.
+ * Fitur utama:
+ *  - Pencarian dan filter berdasarkan skor peluang.
+ *  - Statistik prioritas nasabah (skor tinggi).
+ *  - Panggilan langsung ke nasabah & pencatatan hasil panggilan.
+ *  - Ekspor data ke format CSV.
+ *
+ * Integrasi API:
+ *  - GET  /api/dashboard/stats         → statistik ringkas
+ *  - GET  /api/customers               → daftar nasabah
+ *  - POST /api/customers/[id]/calls    → simpan hasil panggilan
+ *  - GET  /api/export/csv              → ekspor CSV
+ */
+
 import React, { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";

@@ -7,20 +7,19 @@ import {
   PanelLeftClose,
   LogOut,
   Users,
-  Loader2, // ✅ spinner icon dari lucide-react
+  Loader2,
 } from "lucide-react";
 
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false); // ✅ state feedback logout
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
 
-  /* DETECT ROLE dari URL
-     TODO: nanti ini diganti dengan role dari backend setelah login */
+
   const role = pathname.startsWith("/admin") ? "admin" : "user";
 
   /* Menu untuk User */
@@ -42,7 +41,6 @@ export default function Sidebar() {
   /* Cek active termasuk turunan path */
   const isActive = (p: string) => pathname.startsWith(p);
 
-  // ✅ Tombol logout dengan feedback dan spinner
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -138,7 +136,6 @@ export default function Sidebar() {
               className={`rounded-lg bg-[var(--color-accent)] text-white font-semibold text-sm hover:bg-[#009970] transition flex items-center justify-center gap-2 ${isOpen ? "w-full h-10" : "w-8 h-8"
                 }`}
             >
-              {/* ✅ Spinner muncul ketika logout */}
               {isLoggingOut ? (
                 <>
                   <Loader2 size={isOpen ? 18 : 14} className="animate-spin" />

@@ -1,5 +1,19 @@
 "use client";
 
+/**
+ * admin/sales/page.tsx
+ *
+ * Halaman manajemen data Sales untuk Admin.
+ * Menyediakan fitur CRUD (Create, Read, Update, Delete) dengan konfirmasi modal
+ * serta validasi form input yang terintegrasi dengan API `/api/admin/sales`.
+ *
+ * Fitur utama:
+ * - Menampilkan daftar sales dari database.
+ * - Menambah, mengubah, dan menghapus data sales.
+ * - Validasi input form (nama, email, password).
+ * - Konfirmasi tindakan melalui modal.
+ */
+
 import React, { useEffect, useState } from "react";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";

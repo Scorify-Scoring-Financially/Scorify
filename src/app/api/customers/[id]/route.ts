@@ -1,9 +1,29 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
+/**
+ * =========================================================
+ *  API — /api/customers/[id]
+ * =========================================================
+ * Fungsi:
+ *   Mengambil detail lengkap nasabah beserta:
+ *   - Riwayat interaksi (telepon + catatan internal)
+ *   - Skor peluang terbaru
+ *   - Status kontak & status penawaran terakhir
+ *
+ * Akses:
+ *   - Dapat dipanggil oleh Admin atau Sales dengan akses data customer.
+ *
+ * Output:
+ *   {
+ *     details: {...},
+ *     history: [...]
+ *   }
+ * =========================================================
+ */
+
 export async function GET(
-    request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
 
@@ -79,13 +99,13 @@ export async function GET(
                     }`,
         }));
 
-        // 📊 Data tambahan
+        //  Data tambahan
         const latestScore = customer.leadScores[0]?.score || null;
         const latestInteraction =
             customer.interactionLogs[0]?.callResult || "unknown";
         const statusPenawaran = customer.campaigns[0]?.finalDecision || "pending";
 
-        // ✅ Kirim data JSON
+        //  Kirim data JSON
         return NextResponse.json(
             {
                 details: {

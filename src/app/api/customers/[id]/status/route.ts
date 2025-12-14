@@ -2,17 +2,33 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-// ✅ Format resmi untuk Next.js 15 (params adalah Promise)
+/**
+ * =========================================================
+ *  API — /api/customers/[id]/status
+ * =========================================================
+ * Fungsi:
+ *   Memperbarui status penawaran terakhir (finalDecision)
+ *   dari campaign nasabah berdasarkan ID customer.
+ *
+ * Akses:
+ *   - Dapat dipanggil oleh Admin atau Sales yang berwenang.
+ *
+ * Alur:
+ *   1 Validasi input parameter & body.
+ *   2 Ambil campaign terakhir berdasarkan customerId.
+ *   3 Perbarui field `finalDecision` di tabel campaign.
+ * =========================================================
+ */
 export async function PATCH(
     request: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id } = await context.params; // ⬅️ HARUS pakai await
+        const { id } = await context.params;
         const body = await request.json();
         const { statusPenawaran } = body;
 
-        // 🧩 Validasi input
+        //  Validasi input
         if (!id || !statusPenawaran) {
             return NextResponse.json(
                 { error: "Customer ID dan status penawaran wajib diisi" },
@@ -20,7 +36,7 @@ export async function PATCH(
             );
         }
 
-        // 🧠 Ambil campaign terakhir dari customer ini
+        //  Ambil campaign terakhir dari customer ini
         const latestCampaign = await db.campaign.findFirst({
             where: { customerId: id },
             orderBy: { createdAt: "desc" },
@@ -33,7 +49,7 @@ export async function PATCH(
             );
         }
 
-        // ✅ Update status penawaran di campaign
+        //  Update status penawaran di campaign
         const updated = await db.campaign.update({
             where: { id: latestCampaign.id },
             data: { finalDecision: statusPenawaran },

@@ -3,11 +3,40 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import z from "zod";
 
+/**
+ * =========================================================
+ *  🧩 LOGIN API — /api/auth/login
+ * =========================================================
+ *  Fungsi: Melakukan autentikasi pengguna berdasarkan email dan password.
+ *
+ *  Alur utama:
+ *   1. Validasi input dengan Zod.
+ *   2. Cek apakah email terdaftar di database.
+ *   3. Bandingkan password input dengan hash di DB (bcrypt).
+ *   4. Jika cocok → generate JWT token dan set di cookie (HttpOnly).
+ *   5. Kembalikan informasi user tanpa password.
+ *
+ *  Keamanan:
+ *   - Password tidak pernah dikembalikan ke klien.
+ *   - Cookie menggunakan flag HttpOnly, SameSite Strict, dan Secure di production.
+ *   - Token kedaluwarsa otomatis setelah 24 jam (1 hari).
+ * =========================================================
+ */
+
+// =========================================================
+// 🔹 Skema Validasi Login dengan Zod
+// ---------------------------------------------------------
+// Memastikan data email dan password dikirim dengan benar.
+// =========================================================
+
 const loginSchema = z.object({
     email: z.string("Email wajib diisi").email("Format email tidak valid"),
     password: z.string("Password wajib diisi")
 })
 
+// =========================================================
+// 🔹 Handler: POST /api/auth/login
+// =========================================================
 export async function POST(request: Request) {
     try {
         const body = await request.json();

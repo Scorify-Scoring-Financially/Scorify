@@ -3,6 +3,28 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import z from "zod";
 
+/**
+ * =========================================================
+ *  USER REGISTRATION & UPDATE API
+ * =========================================================
+ * Endpoint: /api/auth/register
+ *
+ * Fungsi:
+ *  - POST: Mendaftarkan user baru (default role = "Sales")
+ *  - PUT: Memperbarui data user yang sudah ada
+ *
+ * Validasi input dilakukan dengan Zod, dan password selalu di-hash
+ * menggunakan bcrypt sebelum disimpan.
+ *
+ * Keamanan:
+ *  - Password tidak pernah disimpan dalam bentuk plaintext.
+ *  - Email otomatis di-lowercase agar tidak duplikat case-sensitive.
+ * =========================================================
+ */
+
+// =========================================================
+// Skema Validasi: REGISTER (POST)
+// =========================================================
 const registerSchema = z.object({
   email: z
     .string()
@@ -26,6 +48,9 @@ const updateSchema = registerSchema.extend({
   id: z.string().min(1, "Id is required"),
 });
 
+// =========================================================
+//  Skema Validasi: REGISTER (POST)
+// =========================================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();

@@ -2,13 +2,35 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
-// Non-cache
+// =========================================================
+//   Konfigurasi Non-Cache untuk API Route
+// =========================================================
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * ✅ GET: Ambil semua sales (role = "Sales")
+ * =========================================================
+ *   SALES MANAGEMENT API
+ * =========================================================
+ *  Endpoint ini mengatur seluruh operasi CRUD terkait akun "Sales"
+ *  dalam sistem Scorify. Masing-masing method mewakili operasi:
+ *
+ *  - GET     → Ambil daftar semua sales.
+ *  - POST    → Tambah sales baru (auto-generate ID).
+ *  - PUT     → Perbarui data sales (parsial).
+ *  - DELETE  → Hapus sales berdasarkan ID.
+ *
+ *  Semua data disimpan pada tabel `user` dengan kolom `role = "Sales"`.
+ * =========================================================
  */
+
+
+/* =========================================================
+    GET /api/sales
+   ---------------------------------------------------------
+   Mengambil semua pengguna dengan peran "Sales".
+   Output disusun berdasarkan urutan ID secara ascending.
+   ========================================================= */
 export async function GET() {
     try {
         const sales = await db.user.findMany({
@@ -35,9 +57,24 @@ export async function GET() {
     }
 }
 
-/**
- * ✅ POST: Tambah sales baru (ID otomatis "sales_1", "sales_2", dst)
- */
+/* =========================================================
+    POST /api/sales
+   ---------------------------------------------------------
+   Menambahkan sales baru ke database.
+
+   Request Body:
+   {
+       "name": "Nama Sales",
+       "email": "email@contoh.com",
+       "password": "plaintext123"
+   }
+
+   Logika Utama:
+   - Validasi data wajib.
+   - Cek duplikasi email.
+   - Generate ID otomatis → "sales_1", "sales_2", dst.
+   - Simpan user dengan password ter-hash dan role "Sales".
+   ========================================================= */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -112,9 +149,25 @@ export async function POST(req: Request) {
     }
 }
 
-/**
- * ✅ PUT: Update data sales (nama/email/password opsional)
- */
+/* =========================================================
+    PUT /api/sales
+   ---------------------------------------------------------
+   Memperbarui data sales yang sudah ada.
+   Hanya field yang dikirim dalam body yang akan diubah.
+
+   Request Body:
+   {
+       "id": "sales_1",
+       "name": "Nama Baru",
+       "email": "email@baru.com",
+       "password": "passwordBaru123"
+   }
+
+   Logika:
+   - Validasi `id` wajib.
+   - Cek apakah sales dengan ID tersebut ada.
+   - Update hanya field yang diberikan (parsial).
+   ========================================================= */
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
@@ -170,9 +223,19 @@ export async function PUT(req: Request) {
     }
 }
 
-/**
- * ✅ DELETE: Hapus sales berdasarkan ID
- */
+/* =========================================================
+    DELETE /api/sales?id=sales_1
+   ---------------------------------------------------------
+   Menghapus data sales berdasarkan ID.
+
+   Query Parameter:
+   - id (string) → contoh: sales_1
+
+   Logika:
+   - Validasi parameter `id`.
+   - Cek apakah sales ditemukan.
+   - Hapus dari database.
+   ========================================================= */
 export async function DELETE(req: Request) {
     try {
         const { searchParams } = new URL(req.url);

@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+/**
+ * =========================================================
+ *  API — GET /api/admin/sales
+ * =========================================================
+ * Fitur:
+ *   - Mengambil daftar seluruh user dengan role = "Sales"
+ *   - Hanya field penting (id, name, email)
+ *   - Diurutkan secara alfabetis berdasarkan nama
+ *
+ * Response:
+ *   {
+ *     "sales": [
+ *       { "id": "sales_1", "name": "John Doe", "email": "john@domain.com" },
+ *       ...
+ *     ]
+ *   }
+ * =========================================================
+ */
+
 export async function GET() {
     try {
         const sales = await db.user.findMany({

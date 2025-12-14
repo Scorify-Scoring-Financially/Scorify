@@ -3,6 +3,22 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+/**
+ * =========================================================
+ *  API — GET /api/reports/sales/monthly
+ * =========================================================
+ * Fitur:
+ *   - Menyediakan agregasi bulanan untuk laporan Sales
+ *   - Mendukung role-based access:
+ *       • Sales → hanya datanya sendiri
+ *       • Admin → semua data atau filter per Sales tertentu
+ *   - Parameter:
+ *       • year   (default: tahun sekarang)
+ *       • status (all | agreed | declined | pending)
+ *       • sales  (khusus Admin)
+ * =========================================================
+ */
+
 const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",
@@ -42,7 +58,6 @@ interface MonthlyBucket {
     tertunda: number;
 }
 
-// GET /api/reports/sales/monthly?year=2025&status=all|agreed|declined|pending[&sales=<userId>]
 export async function GET(request: NextRequest) {
     try {
         // --- Auth
@@ -67,7 +82,7 @@ export async function GET(request: NextRequest) {
             10
         );
         const status = (searchParams.get("status") || "all").toLowerCase(); // all | agreed | declined | pending
-        const salesParam = searchParams.get("sales") || ""; // khusus admin: filter ke sales tertentu
+        const salesParam = searchParams.get("sales") || "";
 
         const gte = new Date(year, 0, 1);
         const lt = new Date(year + 1, 0, 1);
@@ -105,7 +120,6 @@ export async function GET(request: NextRequest) {
         for (const c of campaigns) {
             let monthIdx = monthIndexFromString(c.month);
             if (monthIdx === null) {
-                // ✅ FIX TypeScript build error: pastikan createdAt bukan null
                 monthIdx = c.createdAt ? c.createdAt.getMonth() : 0;
             }
 

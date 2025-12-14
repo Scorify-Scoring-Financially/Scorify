@@ -1,27 +1,49 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// 🚫 Non-cache
+// =========================================================
+// ⚙️ Konfigurasi Respons Dinamis (Non-Cacheable API)
+// =========================================================
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * API untuk statistik dashboard admin
- * - totalCustomers: jumlah seluruh nasabah
- * - totalSales: jumlah seluruh sales (user.role = 'SALES')
- * - totalHighScore: nasabah yang memiliki skor terbaru >= 0.8
+ * =========================================================
+ * 📊 ADMIN DASHBOARD STATISTICS API
+ * =========================================================
+ * Endpoint: /api/dashboard/admin/stats
+ *
+ * Deskripsi:
+ * Memberikan ringkasan statistik global untuk dashboard admin:
+ *  - totalCustomers   → jumlah seluruh nasabah (tabel `customer`)
+ *  - totalSales       → jumlah seluruh sales (user.role = "Sales")
+ *  - totalHighScore   → jumlah nasabah dengan skor peluang ≥ 0.8
+ *
+ * Logika utama:
+ *  1. Hitung total nasabah dari tabel `customer`.
+ *  2. Hitung total sales dari tabel `user` berdasarkan role.
+ *  3. Hitung nasabah dengan skor peluang tinggi (>= 0.8)
+ *     dengan memeriksa relasi `leadScores`.
+ *
+ * Response Format:
+ * {
+ *   "totalCustomers": number,
+ *   "totalSales": number,
+ *   "totalHighScore": number
+ * }
+ * =========================================================
  */
 export async function GET() {
     try {
-        // 1️⃣ Ambil total nasabah
+        //  Ambil total nasabah
         const totalCustomers = await db.customer.count();
 
-        // 2️⃣ Ambil total sales (role = 'SALES')
+        //  Ambil total sales (role = 'SALES')
         const totalSales = await db.user.count({
             where: { role: "Sales" },
         });
 
-        // 3️⃣ Ambil nasabah dengan skor tinggi (>= 0.8)
+        //  Ambil nasabah dengan skor tinggi (>= 0.8)
         // Ambil skor terbaru per nasabah → cari yang terakhir di leadScores
         const highScoreCustomers = await db.customer.findMany({
             where: {
@@ -34,7 +56,7 @@ export async function GET() {
 
         const totalHighScore = highScoreCustomers.length;
 
-        // ✅ Kembalikan response JSON
+        // Kembalikan response JSON
         return NextResponse.json(
             {
                 totalCustomers,

@@ -1,13 +1,27 @@
-// Admin Customer Detail Page (Read-Only)
-// NOTE: Semua tombol & aksi dibuat non-aktif untuk admin
-
 "use client";
+
+/**
+ * admin/dashboard/customers/[id]/page.tsx
+ * 
+ * Komponen halaman detail nasabah untuk panel admin.
+ * Menampilkan informasi nasabah, skor peluang, status kontak,
+ * serta riwayat interaksi dengan nasabah.
+ * 
+ * Data diambil secara dinamis dari API `/api/customers/[id]`
+ * berdasarkan parameter `id` di URL.
+ */
+
 
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Phone, FileText, ArrowLeft, Plus } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 
+// ==========================
+// Type Definitions
+// ==========================
+
+/** Detail informasi nasabah yang diterima dari API */
 type CustomerDetails = {
   id: string;
   name: string;
@@ -20,6 +34,7 @@ type CustomerDetails = {
   statusKontak: "success" | "failure" | "nonexist";
 };
 
+/** Struktur data untuk setiap catatan riwayat interaksi */
 type HistoryItem = {
   id: string;
   type: string;
@@ -27,14 +42,27 @@ type HistoryItem = {
   note: string;
 };
 
+// ==========================
+// Main Component
+// ==========================
 export default function AdminCustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
+  // State utama untuk menyimpan data customer dan riwayat
   const [customer, setCustomer] = useState<CustomerDetails | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ==========================
+  // Data Fetching
+  // ==========================
+
+  /**
+   * Ambil data detail nasabah dari endpoint API berdasarkan `id` URL.
+   * Jika gagal, tampilkan error di console. Setelah data diperoleh,
+   * set ke state `customer` dan `history`.
+   */
   useEffect(() => {
     if (!id) return;
 
@@ -55,6 +83,9 @@ export default function AdminCustomerDetailPage() {
     fetchCustomer();
   }, [id]);
 
+  // ==========================
+  // Loading & Error State
+  // ==========================
   if (loading)
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -72,11 +103,17 @@ export default function AdminCustomerDetailPage() {
       </div>
     );
 
+  // ==========================
+  // Derived Data & Helpers
+  // ==========================
+
+  /** Mengubah skor peluang ke bentuk persentase */
   const skorPercent =
     customer.skorPeluang !== null
       ? `${Math.round(customer.skorPeluang * 100)}%`
       : "-";
 
+  /** Mengatur warna badge berdasarkan status kontak */
   const getStatusColor = (status: string) => {
     switch (status) {
       case "success":
@@ -88,6 +125,7 @@ export default function AdminCustomerDetailPage() {
     }
   };
 
+  /** Menentukan ikon yang sesuai dengan jenis riwayat interaksi */
   const getIconForType = (type: string) => {
     if (type.toLowerCase().includes("panggilan"))
       return <Phone size={16} className="text-green-600" />;
@@ -95,6 +133,11 @@ export default function AdminCustomerDetailPage() {
       return <FileText size={16} className="text-green-600" />;
     return <FileText size={16} className="text-gray-500" />;
   };
+
+
+  // ==========================
+  // Render UI
+  // ==========================
 
   return (
     <div className="flex min-h-screen bg-gradient-to-b from-[#F7FFF9] to-[#F0FFF4] font-sans">

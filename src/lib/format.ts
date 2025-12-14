@@ -3,9 +3,9 @@ export function formatEnumValue(value?: string | null): string {
     if (!value) return "-";
 
     return value
-        .split("_") // pisahkan berdasarkan underscore
+        .split("_")
         .map((word) =>
             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        ) // uppercase huruf pertama
-        .join(" "); // gabung jadi kalimat biasa
+        )
+        .join(" ");
 }

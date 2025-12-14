@@ -3,7 +3,20 @@ import { cookies } from "next/headers";
 import { verifyJwt } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// (opsional, tetap disimpan untuk konsistensi tampilan chart)
+/**
+ * =========================================================
+ *  API — GET /api/reports/sales/summary
+ * =========================================================
+ * Fitur:
+ *   - Laporan ringkasan bulanan untuk user Sales
+ *   - Data mencakup:
+ *       • Total nasabah unik
+ *       • Approval rate (persetujuan)
+ *       • Jumlah nasabah dihubungi
+ *       • Distribusi skor peluang (high/medium/low)
+ * =========================================================
+ */
+
 const MONTHS_ID: string[] = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agus", "Sep", "Okt", "Nov", "Des",

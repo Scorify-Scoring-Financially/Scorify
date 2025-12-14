@@ -1,5 +1,24 @@
 import { NextResponse } from "next/server";
 
+/**
+ * =========================================================
+ * 🔐 LOGOUT API — /api/auth/logout
+ * =========================================================
+ * Fungsi:
+ *   Menghapus cookie JWT (`token`) dari browser untuk
+ *   mengakhiri sesi autentikasi pengguna.
+ *
+ * Alur utama:
+ *   1. Buat response JSON “Logout successfully”.
+ *   2. Hapus cookie `token` dengan mengatur `expires` ke masa lalu.
+ *   3. Pastikan cookie aman (HttpOnly, SameSite Strict, dll).
+ *
+ * Response Contoh:
+ *   {
+ *     "message": "Logout successfully"
+ *   }
+ * =========================================================
+ */
 export async function POST() {
     try {
         // Buat response sukses
