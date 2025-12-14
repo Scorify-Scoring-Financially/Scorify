@@ -24,7 +24,7 @@ import { Prisma } from "@prisma/client";
  */
 
 export async function GET(
-    context: { params: Promise<{ id: string }> }
+    context: { params: { id: string } }
 ) {
 
     const translateMap: Record<string, string> = {
