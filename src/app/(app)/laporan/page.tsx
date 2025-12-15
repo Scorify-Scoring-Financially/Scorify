@@ -104,14 +104,14 @@ export default function LaporanSalesPage() {
     };
   }, [kategori, scoreDistributionApi]);
 
-  // Donut data
+  // Donut data (fixed logic)
   const donutData = useMemo(() => {
     const high = Math.round((scoreDistribution.high || 0) * 100);
     const med = Math.round((scoreDistribution.medium || 0) * 100);
     const low = Math.round((scoreDistribution.low || 0) * 100);
 
     const sum = high + med + low;
-    if (sum === 100) {
+    if (sum > 0) {
       return [
         { name: "Skor Tinggi", value: high },
         { name: "Skor Sedang", value: med },
@@ -370,6 +370,7 @@ export default function LaporanSalesPage() {
             </div>
           </div>
         </div>
+
         <div className="text-sm text-gray-500">
           Data tahun <b>{year}</b>
         </div>

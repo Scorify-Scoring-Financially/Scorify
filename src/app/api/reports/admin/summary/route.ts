@@ -1,20 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
-import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { Prisma, FinalDecision } from "@prisma/client"; // ← tambahkan ini
+import { startOfYear, subYears } from "date-fns";
 
 /**
  * =========================================================
- *  API — GET /api/reports/sales/summary
+ *  API — GET /api/reports/admin/summary
  * =========================================================
  * Fitur:
- *   - Statistik laporan bulanan (total customer, approval rate, dsb.)
- *   - Bandingkan data bulan ini vs bulan lalu
- *   - Distribusi skor peluang (high/medium/low)
- *   - Filter by:
- *       • salesId (atau "all")
- *       • year
- *       • statusPenawaran (agreed / declined / pending / all)
+ *   - Statistik laporan tahunan (total customer, approval rate, dll.)
+ *   - Semua metrik mengikuti filter: salesId, year, status.
+ *   - Data mencakup growth perbandingan tahun ini vs tahun lalu.
  * =========================================================
  */
 
@@ -32,8 +28,8 @@ function toScoreBand(score: number): "high" | "medium" | "low" {
 function toYearRange(year?: number): Prisma.DateTimeFilter | undefined {
     if (!year) return undefined;
     return {
-        gte: new Date(year, 0, 1, 0, 0, 0),
-        lt: new Date(year + 1, 0, 1, 0, 0, 0),
+        gte: startOfYear(new Date(year, 0, 1)),
+        lt: startOfYear(new Date(year + 1, 0, 1)),
     };
 }
 
@@ -46,82 +42,80 @@ export async function GET(request: NextRequest) {
 
         const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
         const yearRange = toYearRange(year);
+        const prevYearRange = {
+            gte: startOfYear(subYears(new Date(year, 0, 1), 1)),
+            lt: startOfYear(new Date(year, 0, 1)),
+        };
 
-        const where: Prisma.CampaignWhereInput = {
+        // ✅ mapping dari string ke enum FinalDecision
+        const statusFilter: FinalDecision | undefined =
+            statusParam === "agreed"
+                ? FinalDecision.agreed
+                : statusParam === "declined"
+                    ? FinalDecision.declined
+                    : statusParam === "pending"
+                        ? FinalDecision.pending
+                        : undefined;
+
+        // === Filter dinamis utama untuk campaign ===
+        const campaignFilter: Prisma.CampaignWhereInput = {
             ...(yearRange ? { createdAt: yearRange } : {}),
+            ...(salesId !== "all" ? { userId: salesId } : {}),
+            ...(statusFilter ? { finalDecision: statusFilter } : {}),
         };
 
-        if (salesId !== "all") {
-            where.userId = salesId;
-        }
-
-        if (statusParam !== "all") {
-            where.finalDecision = statusParam as "agreed" | "declined" | "pending";
-        }
-
-        const now = new Date();
-        const thisMonthRange = { gte: startOfMonth(now), lt: endOfMonth(now) };
-        const prevMonthRange = {
-            gte: startOfMonth(subMonths(now, 1)),
-            lt: endOfMonth(subMonths(now, 1)),
+        const prevCampaignFilter: Prisma.CampaignWhereInput = {
+            ...(prevYearRange ? { createdAt: prevYearRange } : {}),
+            ...(salesId !== "all" ? { userId: salesId } : {}),
+            ...(statusFilter ? { finalDecision: statusFilter } : {}),
         };
 
-        const [thisMonthCampaigns, prevMonthCampaigns] = await Promise.all([
+        // === Ambil data paralel ===
+        const [thisYearCampaigns, prevYearCampaigns, scoresThisYear] = await Promise.all([
             db.campaign.findMany({
-                where: { ...where, createdAt: thisMonthRange },
-                select: {
-                    id: true,
-                    customerId: true,
-                    finalDecision: true,
-                    createdAt: true,
-                    leadScores: {
-                        orderBy: { createdAt: "desc" },
-                        take: 1,
-                        select: { score: true },
-                    },
-                },
+                where: campaignFilter,
+                select: { id: true, customerId: true, finalDecision: true },
             }),
             db.campaign.findMany({
-                where: { ...where, createdAt: prevMonthRange },
-                select: {
-                    id: true,
-                    customerId: true,
-                    finalDecision: true,
-                    createdAt: true,
-                    leadScores: {
-                        orderBy: { createdAt: "desc" },
-                        take: 1,
-                        select: { score: true },
+                where: prevCampaignFilter,
+                select: { id: true, customerId: true, finalDecision: true },
+            }),
+            db.leadscore.findMany({
+                where: {
+                    createdat: yearRange,
+                    Campaign: {
+                        ...(salesId !== "all" ? { userId: salesId } : {}),
                     },
                 },
+                orderBy: { createdat: "desc" },
+                select: { customerid: true, score: true },
             }),
         ]);
 
-        const distinctCustomerIds = new Set(thisMonthCampaigns.map((c) => c.customerId));
-        const totalCustomers = distinctCustomerIds.size;
+        // === Total Nasabah (dinamis mengikuti filter) ===
+        const distinctCustomers = new Set(thisYearCampaigns.map((c) => c.customerId));
+        const totalCustomers = distinctCustomers.size;
 
-        const totalCampaigns = thisMonthCampaigns.length;
-        const agreedCount = thisMonthCampaigns.filter((c) => c.finalDecision === "agreed").length;
-        const approvalRate = totalCampaigns > 0 ? agreedCount / totalCampaigns : 0;
+        // === Tingkat Persetujuan Deposito ===
+        const agreed = thisYearCampaigns.filter((c) => c.finalDecision === "agreed").length;
+        const declined = thisYearCampaigns.filter((c) => c.finalDecision === "declined").length;
+        const decided = agreed + declined;
+        const approvalRate = decided > 0 ? agreed / decided : 0;
 
-        const contactedCustomers = thisMonthCampaigns.filter(
-            (c) => c.finalDecision && c.finalDecision !== "pending"
-        ).length;
+        // === Jumlah Nasabah Dihubungi ===
+        const contacted = new Set(
+            thisYearCampaigns
+                .filter((c) => c.finalDecision !== "pending")
+                .map((c) => c.customerId)
+        ).size;
 
+        // === Distribusi Skor ===
         const latestScorePerCustomer = new Map<string, number>();
-        thisMonthCampaigns
-            .slice()
-            .sort((a, b) => {
-                const aTime = a.createdAt ? a.createdAt.getTime() : 0;
-                const bTime = b.createdAt ? b.createdAt.getTime() : 0;
-                return bTime - aTime;
-            })
-            .forEach((c) => {
-                const s = c.leadScores?.[0]?.score;
-                if (s !== undefined && s !== null && !latestScorePerCustomer.has(c.customerId)) {
-                    latestScorePerCustomer.set(c.customerId, s);
-                }
-            });
+        for (const s of scoresThisYear) {
+            if (!latestScorePerCustomer.has(s.customerid)) {
+                latestScorePerCustomer.set(s.customerid, s.score ?? 0);
+            }
+        }
 
         let high = 0;
         let medium = 0;
@@ -140,46 +134,41 @@ export async function GET(request: NextRequest) {
             low: low / denom,
         };
 
-        const prevDistinct = new Set(prevMonthCampaigns.map((c) => c.customerId));
-        const prevCustomers = prevDistinct.size;
-
-        const prevCampaigns = prevMonthCampaigns.length;
-        const prevAgreed = prevMonthCampaigns.filter((c) => c.finalDecision === "agreed").length;
-        const prevApprovalRate = prevCampaigns > 0 ? prevAgreed / prevCampaigns : 0;
-        const prevContacted = prevMonthCampaigns.filter(
-            (c) => c.finalDecision && c.finalDecision !== "pending"
-        ).length;
+        // === Growth (tahun lalu) ===
+        const prevDistinctCustomers = new Set(prevYearCampaigns.map((c) => c.customerId)).size;
+        const prevAgreed = prevYearCampaigns.filter((c) => c.finalDecision === "agreed").length;
+        const prevDeclined = prevYearCampaigns.filter((c) => c.finalDecision === "declined").length;
+        const prevDecided = prevAgreed + prevDeclined;
+        const prevApprovalRate = prevDecided > 0 ? prevAgreed / prevDecided : 0;
+        const prevContacted = new Set(
+            prevYearCampaigns
+                .filter((c) => c.finalDecision !== "pending")
+                .map((c) => c.customerId)
+        ).size;
 
         const calcGrowth = (curr: number, prev: number) =>
             prev > 0 ? ((curr - prev) / prev) * 100 : 0;
 
         const growth = {
-            customers: calcGrowth(totalCustomers, prevCustomers),
+            customers: calcGrowth(totalCustomers, prevDistinctCustomers),
             approvalRate: calcGrowth(approvalRate, prevApprovalRate),
-            contacted: calcGrowth(contactedCustomers, prevContacted),
+            contacted: calcGrowth(contacted, prevContacted),
         };
 
+        // === Return Response ===
         return NextResponse.json(
             {
-                totalCustomers: totalCustomers ?? 0,
-                approvalRate: approvalRate ?? 0,
-                contactedCustomers: contactedCustomers ?? 0,
-                scoreDistribution: scoreDistribution ?? { high: 0, medium: 0, low: 0 },
+                totalCustomers,
+                approvalRate,
+                contactedCustomers: contacted,
+                scoreDistribution,
                 months: MONTHS,
-                growth: growth ?? { customers: 0, approvalRate: 0, contacted: 0 },
+                growth,
             },
             { status: 200 }
         );
     } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error("[API_ADMIN_SUMMARY_ERROR]", {
-                name: error.name,
-                message: error.message,
-            });
-        } else {
-            console.error("[API_ADMIN_SUMMARY_ERROR]", error);
-        }
-
+        console.error("[API_ADMIN_SUMMARY_ERROR]", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }
