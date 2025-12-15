@@ -159,8 +159,9 @@ Apabila Anda menggunakan database atau server berbeda, cukup sesuaikan nilai var
 - File model terlatih dapat diunduh melalui Google Drive → **[Download Model](https://drive.google.com/drive/folders/1DT857d-xcnRz_UuIdplyAPIPrYMk97sf?usp=sharing)**
 
 ### 🎥 Demo & Akses Aplikasi
-- 🌐 Website: **[Click Here](https://scorify-two.vercel.app/)** 
-- 🎥 Video Demo: *(diisi nanti)* 
+- 🌐 Website: **[Click Here](https://scorify-two.vercel.app/)**
+- 💻Penggunaan Produk : **[Click Here](https://youtu.be/nh_6cgU-HC8)**
+- 🎥 Video Demo: **[Click Here](https://youtu.be/fUs_xiS34k4?si=jVFrNzo5oN0RsAKF)**
 
 ---
 
